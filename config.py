@@ -16,6 +16,9 @@
 # GitHub settings
 REPO_LINK = "https://github.com/apache/nutch"
 
+# Maven search settings
+MAVEN_SEARCH_URL = "https://search.maven.org/solrsearch/select?q=g:{}%20AND%20a:{}&core=gav&start=0&rows=20"
+
 
 # Sensitive settings !!! DO NOT PUSH !!!
 GITHUB_USERNAME="XXXXXXX"

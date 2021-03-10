@@ -15,11 +15,14 @@
 
 #!/usr/bin/python3
 
+import json
 import subprocess
 import os
-import config
 
 from github import Github
+import urllib3
+
+import config
 
 
 def setup_env():
@@ -39,11 +42,45 @@ def setup_env():
     subprocess.run(['ant'], cwd=REPO_PATH)
 
 
-def main():
+def newest_dependency_version(org, name):
+    http = urllib3.PoolManager()
+    resp = http.request('GET', config.MAVEN_SEARCH_URL.format(org, name))
+
+    if resp.status != 200:
+        raise urllib3.exceptions.ConnectionError
+
+    resp = json.loads(resp.data)
+    version = resp['response']['docs'][0]['v']
+
+    return version
+
+
+def change_dependency_version(file, name, version):
     pass
 
 
+def submit_upgrade_pull_request(file, name, old_version, new_version):
+    pass
+
+
+def main():
+    repo_name = config.REPO_LINK.split('/')[-1].split('.')[0]
+    deps_to_update = []
+    for plugin in os.listdir('{}/src/plugin/'.format(repo_name)):
+        if os.path.isdir('{}/src/plugin/{}'.format(repo_name, plugin)) and \
+                os.path.exists('{}/src/plugin/{}/ivy.xml'.format(repo_name, plugin)):
+            # ADD OUTDATED DEPENDENCIES (AND THE FILES THEY'RE LOCATED IN) TO deps_to_update
+            print('Found plugin: {}'.format(plugin))
+            # print(newest_dependency_version('org.apache.commons', 'commons-rdf-api'))
+
+    for dependency in deps_to_update:
+        change_dependency_version(dependency['file'], dependency['name'], dependency['new_version'])
+        submit_upgrade_pull_request(dependency['file'], dependency['name'],
+                                    dependency['old_version'], dependency['new_version'])
+        change_dependency_version(dependency['file'], dependency['name'], dependency['old_version'])
+
+
 if __name__ == '__main__':
-    setup_env()
+    # setup_env()
     main()
 
