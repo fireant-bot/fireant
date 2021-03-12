@@ -13,8 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Ivy test files
+IVY_FILE_LIST = ["ivy/ivy.xml",
+                 "src/plugin/any23/ivy.xml"]
+
 # GitHub settings
 REPO_LINK = "https://github.com/apache/nutch"
+REPO_PATH = ".repo"
+PLUGINS_FOLDER = "/src/plugin"
 
 # Maven search settings
 MAVEN_SEARCH_URL = "https://search.maven.org/solrsearch/select?q=g:{}%20AND%20a:{}&core=gav&start=0&rows=20"

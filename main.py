@@ -17,19 +17,18 @@
 
 import json
 import subprocess
+import threading
+from queue import Queue
 import os
 
 from github import Github
 import urllib3
 
 import config
+from dependencyfile import DependencyFile
 
 
-def setup_env():
-    REPO_LINK = config.REPO_LINK
-    # consider changing this to an absolute path
-    REPO_PATH = '.repo'
-
+def debug():
     print("Testing python docker image")
     subprocess.run(['java', '-version'])
     subprocess.run(['git', 'version'])
@@ -37,9 +36,15 @@ def setup_env():
     print("Testing env variables")
     print('JAVA_HOME:', os.environ['JAVA_HOME'])
     print('ANT_HOME:', os.environ['ANT_HOME'])
+    subprocess.run(['ant'], cwd=config.REPO_PATH)
+
+
+def setup_env():
+    REPO_LINK = config.REPO_LINK
+    REPO_PATH = config.REPO_PATH
+
     if not os.path.isdir(REPO_PATH):
         subprocess.run(['git', 'clone', REPO_LINK, REPO_PATH])
-    subprocess.run(['ant'], cwd=REPO_PATH)
 
 
 def newest_dependency_version(org, name):
@@ -50,13 +55,41 @@ def newest_dependency_version(org, name):
         raise urllib3.exceptions.ConnectionError
 
     resp = json.loads(resp.data)
-    version = resp['response']['docs'][0]['v']
-
+    i = 0
+    while any(char.isalpha() for char in resp['response']['docs'][i]['v']):
+        i += 1
+    version = resp['response']['docs'][i]['v']
     return version
 
 
-def change_dependency_version(file, name, version):
-    pass
+def tag_new_dep_version(dependencies):
+    dep_queue = Queue(1000)
+    new_dep_queue = Queue(1000)
+    for dep in dependencies:
+        dep_queue.put(dep)
+
+    threads = []
+    for i in range(8):
+        t = threading.Thread(target=run, name='th-' + str(i), kwargs={'dep_queue': dep_queue, 'new_dep_queue': new_dep_queue})
+        threads.append(t)
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    return new_dep_queue
+
+
+def run(dep_queue, new_dep_queue):
+    while not dep_queue.empty():
+        dep = dep_queue.get()
+        # TODO: EXCEPTION HANDLING BECAUSE THIS FUNCTION WILL THROW EXCEPTION !!! especially networking
+        try:
+            new_version = newest_dependency_version(dep['org'], dep['name'])
+        except KeyError:  # Dict empty
+            continue
+        dep['new_version'] = new_version
+        new_dep_queue.put(dep)
 
 
 def submit_upgrade_pull_request(file, name, old_version, new_version):
@@ -64,23 +97,42 @@ def submit_upgrade_pull_request(file, name, old_version, new_version):
 
 
 def main():
-    repo_name = config.REPO_LINK.split('/')[-1].split('.')[0]
     deps_to_update = []
-    for plugin in os.listdir('{}/src/plugin/'.format(repo_name)):
-        if os.path.isdir('{}/src/plugin/{}'.format(repo_name, plugin)) and \
-                os.path.exists('{}/src/plugin/{}/ivy.xml'.format(repo_name, plugin)):
-            # ADD OUTDATED DEPENDENCIES (AND THE FILES THEY'RE LOCATED IN) TO deps_to_update
-            print('Found plugin: {}'.format(plugin))
-            # print(newest_dependency_version('org.apache.commons', 'commons-rdf-api'))
+    repo_plugins_folder = config.REPO_PATH + config.PLUGINS_FOLDER
+    for plugin in os.listdir('{}'.format(repo_plugins_folder)):
+        if os.path.isdir('{}/{}'.format(repo_plugins_folder, plugin)) and \
+                os.path.exists('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin)):
+            df = DependencyFile('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin))
+            for dep in df.dependency_list():
+                deps_to_update.append(dep)
 
-    for dependency in deps_to_update:
-        change_dependency_version(dependency['file'], dependency['name'], dependency['new_version'])
-        submit_upgrade_pull_request(dependency['file'], dependency['name'],
-                                    dependency['old_version'], dependency['new_version'])
-        change_dependency_version(dependency['file'], dependency['name'], dependency['old_version'])
+    dep_queue = tag_new_dep_version(deps_to_update)
+    while not dep_queue.empty():
+        dep = dep_queue.get()
+        if dep['rev'] != dep['new_version']:
+            print('Should update {} from version {} to version {}'.format(dep['name'], dep['rev'], dep['new_version']))
+
+    for plugin in os.listdir('{}'.format(repo_plugins_folder)):
+        if os.path.isdir('{}/{}'.format(repo_plugins_folder, plugin)) and \
+                os.path.exists('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin)):
+            df = DependencyFile('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin))
+            for dep in df.dependency_list():
+                # TODO: UPDATE FILE WITH NEW VERSION
+                # TODO: CHECK IF THERE ISN'T ALREADY A PULL REQUEST FOR THAT VERSION UPGRADE
+                # TODO: SEND PULL REQUEST IF ABOVE CONDITION MET
+                # TODO: REVERT FILE BACK TO OLD VERSION
+                pass
+    # for c, f in enumerate(config.IVY_FILE_LIST):
+    #     df = DependencyFile(config.REPO_PATH + "/" + f)
+    #     # Update logic should go here
+    #     # df.modify_version(0, "5.3.7")
+    #     # df.print_log()
+    #     # df.save(str(c) + '_example.xml')
+    #     # df.print_log()
+    #     print()
+    #     print(df.dependency_list())
 
 
 if __name__ == '__main__':
-    # setup_env()
     main()
 
