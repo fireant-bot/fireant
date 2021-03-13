@@ -70,7 +70,8 @@ def tag_new_dep_version(dependencies):
 
     threads = []
     for i in range(8):
-        t = threading.Thread(target=run, name='th-' + str(i), kwargs={'dep_queue': dep_queue, 'new_dep_queue': new_dep_queue})
+        t = threading.Thread(target=run, name='th-' + str(i), kwargs={'dep_queue': dep_queue,
+                                                                      'new_dep_queue': new_dep_queue})
         threads.append(t)
     for t in threads:
         t.start()
@@ -83,9 +84,8 @@ def tag_new_dep_version(dependencies):
 def run(dep_queue, new_dep_queue):
     while not dep_queue.empty():
         dep = dep_queue.get()
-        # TODO: EXCEPTION HANDLING BECAUSE THIS FUNCTION WILL THROW EXCEPTION !!! especially networking
         new_version = None
-        attempts = 3
+        attempts = config.HTTP_RETRY_ATTEMPTS
         while attempts > 0:
             try:
                 new_version = newest_dependency_version(dep['org'], dep['name'])
