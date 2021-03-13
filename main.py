@@ -86,12 +86,9 @@ def run(dep_queue, new_dep_queue):
         dep = dep_queue.get()
         new_version = None
         attempts = config.HTTP_RETRY_ATTEMPTS
-        while attempts > 0:
+        while dep and not new_version and attempts > 0:
             try:
                 new_version = newest_dependency_version(dep['org'], dep['name'])
-                attempts = 0
-            except KeyError:  # Dict empty
-                break
             except IndexError:
                 attempts -= 1
 

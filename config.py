@@ -24,6 +24,7 @@ PLUGINS_FOLDER = "/src/plugin"
 
 # Maven search settings
 MAVEN_SEARCH_URL = "https://search.maven.org/solrsearch/select?q=g:{}%20AND%20a:{}&core=gav&start=0&rows=20"
+HTTP_RETRY_ATTEMPTS = 3
 
 
 # Sensitive settings !!! DO NOT PUSH !!!
