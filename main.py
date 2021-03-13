@@ -97,40 +97,49 @@ def submit_upgrade_pull_request(file, name, old_version, new_version):
 
 
 def main():
-    deps_to_update = []
+    dependencies = []
+
+    # Add all dependencies in main ivy file
+    df = DependencyFile('{}/ivy/ivy.xml'.format(config.REPO_PATH))
+    for dep in df.dependency_list():
+        dependencies.append(dep)
+
+    # Add all dependencies from plugins
     repo_plugins_folder = config.REPO_PATH + config.PLUGINS_FOLDER
     for plugin in os.listdir('{}'.format(repo_plugins_folder)):
         if os.path.isdir('{}/{}'.format(repo_plugins_folder, plugin)) and \
                 os.path.exists('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin)):
             df = DependencyFile('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin))
             for dep in df.dependency_list():
-                deps_to_update.append(dep)
+                dependencies.append(dep)
 
-    dep_queue = tag_new_dep_version(deps_to_update)
+    # Convert queue to dict
+    dep_dict = {}
+    dep_queue = tag_new_dep_version(dependencies)
     while not dep_queue.empty():
         dep = dep_queue.get()
         if dep['rev'] != dep['new_version']:
+            dep_dict.update({'{}-{}'.format(dep['org'], dep['name']): dep})
             print('Should update {} from version {} to version {}'.format(dep['name'], dep['rev'], dep['new_version']))
 
     for plugin in os.listdir('{}'.format(repo_plugins_folder)):
         if os.path.isdir('{}/{}'.format(repo_plugins_folder, plugin)) and \
                 os.path.exists('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin)):
             df = DependencyFile('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin))
-            for dep in df.dependency_list():
-                # TODO: UPDATE FILE WITH NEW VERSION
+            for i, dep in enumerate(df.dependency_list()):
+                # If no update needed
+                if '{}-{}'.format(dep['org'], dep['name']) not in dep_dict:
+                    continue
+                old_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['rev']
+                new_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['new_version']
+                df.modify_version(0, new_version)
+                df.save()
+
                 # TODO: CHECK IF THERE ISN'T ALREADY A PULL REQUEST FOR THAT VERSION UPGRADE
                 # TODO: SEND PULL REQUEST IF ABOVE CONDITION MET
-                # TODO: REVERT FILE BACK TO OLD VERSION
-                pass
-    # for c, f in enumerate(config.IVY_FILE_LIST):
-    #     df = DependencyFile(config.REPO_PATH + "/" + f)
-    #     # Update logic should go here
-    #     # df.modify_version(0, "5.3.7")
-    #     # df.print_log()
-    #     # df.save(str(c) + '_example.xml')
-    #     # df.print_log()
-    #     print()
-    #     print(df.dependency_list())
+
+                df.modify_version(0, old_version)
+                df.save()
 
 
 if __name__ == '__main__':
