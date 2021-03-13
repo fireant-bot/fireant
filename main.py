@@ -84,10 +84,20 @@ def run(dep_queue, new_dep_queue):
     while not dep_queue.empty():
         dep = dep_queue.get()
         # TODO: EXCEPTION HANDLING BECAUSE THIS FUNCTION WILL THROW EXCEPTION !!! especially networking
-        try:
-            new_version = newest_dependency_version(dep['org'], dep['name'])
-        except KeyError:  # Dict empty
+        new_version = None
+        attempts = 3
+        while attempts > 0:
+            try:
+                new_version = newest_dependency_version(dep['org'], dep['name'])
+                attempts = 0
+            except KeyError:  # Dict empty
+                break
+            except IndexError:
+                attempts -= 1
+
+        if not new_version:
             continue
+
         dep['new_version'] = new_version
         new_dep_queue.put(dep)
 
@@ -125,20 +135,24 @@ def main():
     for plugin in os.listdir('{}'.format(repo_plugins_folder)):
         if os.path.isdir('{}/{}'.format(repo_plugins_folder, plugin)) and \
                 os.path.exists('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin)):
+
             df = DependencyFile('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin))
+
             for i, dep in enumerate(df.dependency_list()):
                 # If no update needed
-                if '{}-{}'.format(dep['org'], dep['name']) not in dep_dict:
+                if not dep or '{}-{}'.format(dep['org'], dep['name']) not in dep_dict:
                     continue
+
                 old_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['rev']
                 new_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['new_version']
-                df.modify_version(0, new_version)
+
+                df.modify_version(i, new_version)
                 df.save()
 
                 # TODO: CHECK IF THERE ISN'T ALREADY A PULL REQUEST FOR THAT VERSION UPGRADE
                 # TODO: SEND PULL REQUEST IF ABOVE CONDITION MET
 
-                df.modify_version(0, old_version)
+                df.modify_version(i, old_version)
                 df.save()
 
 
