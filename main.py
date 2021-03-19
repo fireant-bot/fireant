@@ -21,7 +21,7 @@ import threading
 from queue import Queue
 import os
 
-from github import Github
+from github import Github, InputGitAuthor, GithubException
 import urllib3
 
 import config
@@ -86,7 +86,7 @@ def run(dep_queue, new_dep_queue):
         dep = dep_queue.get()
         new_version = None
         attempts = config.HTTP_RETRY_ATTEMPTS
-        while dep and not new_version and attempts > 0:
+        while dep and 'org' in dep and 'name' in dep and not new_version and attempts > 0:
             try:
                 new_version = newest_dependency_version(dep['org'], dep['name'])
             except IndexError:
@@ -99,18 +99,40 @@ def run(dep_queue, new_dep_queue):
         new_dep_queue.put(dep)
 
 
-def submit_upgrade_pull_request(file, name, old_version, new_version):
-    pass
+def get_repo():
+    repo_name = config.REPO_LINK.split('/')[-1]
+    g = Github(config.GITHUB_USERNAME, config.GITHUB_PASSWORD)
+    return g.get_user().get_repo(repo_name)
+
+
+def get_open_pull_requests():
+    pulls = get_repo().get_pulls(state='open')
+    pages = int(pulls.totalCount / config.NUM_PULLS_PER_PAGE) + 1
+    pull_arr = []
+    for page in range(pages):
+        pull_arr += pulls.get_page(page)[:]
+    pull_title_dict = {}
+    for pull in pull_arr:
+        pull_title_dict.update({pull.title: 1})
+    return pull_title_dict
+
+
+def submit_upgrade_pull_request(name, old_version, new_version, branch):
+    title = config.PULL_REQUEST_FORMAT.format(name, old_version, new_version)
+    pr = get_repo().create_pull(title=title, body=title, head=branch, base="master")
+    print('Created pull request: {}'.format(pr))
 
 
 def main():
     dependencies = []
 
+    print("Adding dependencies from ivy.xml")
     # Add all dependencies in main ivy file
     df = DependencyFile('{}/ivy/ivy.xml'.format(config.REPO_PATH))
     for dep in df.dependency_list():
         dependencies.append(dep)
 
+    print("Adding dependencies from plugins")
     # Add all dependencies from plugins
     repo_plugins_folder = config.REPO_PATH + config.PLUGINS_FOLDER
     for plugin in os.listdir('{}'.format(repo_plugins_folder)):
@@ -127,13 +149,18 @@ def main():
         dep = dep_queue.get()
         if dep['rev'] != dep['new_version']:
             dep_dict.update({'{}-{}'.format(dep['org'], dep['name']): dep})
-            print('Should update {} from version {} to version {}'.format(dep['name'], dep['rev'], dep['new_version']))
+            # print('Should update {} from version {} to version {}'.format(dep['name'], dep['rev'], dep['new_version']))
 
+    print("Getting pull requests")
+
+    # TODO: ALSO INCLUDE ivy/ivy.xml
+    pull_title_dict = get_open_pull_requests()
     for plugin in os.listdir('{}'.format(repo_plugins_folder)):
         if os.path.isdir('{}/{}'.format(repo_plugins_folder, plugin)) and \
                 os.path.exists('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin)):
 
-            df = DependencyFile('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin))
+            file_path = '{}/{}/ivy.xml'.format(repo_plugins_folder, plugin)
+            df = DependencyFile(file_path)
 
             for i, dep in enumerate(df.dependency_list()):
                 # If no update needed
@@ -146,8 +173,25 @@ def main():
                 df.modify_version(i, new_version)
                 df.save()
 
-                # TODO: CHECK IF THERE ISN'T ALREADY A PULL REQUEST FOR THAT VERSION UPGRADE
-                # TODO: SEND PULL REQUEST IF ABOVE CONDITION MET
+                title = config.PULL_REQUEST_FORMAT.format(dep['name'], old_version, new_version)
+                if title not in pull_title_dict:
+                    author = InputGitAuthor(
+                        "fireant-ci",
+                        "jaqwertyuiop12345@gmail.com"
+                    )
+                    branch_name = 'fireant_{}_{}'.format(dep['name'], new_version)
+                    source = get_repo().get_branch(config.MAIN_BRANCH)
+                    try:
+                        get_repo().create_git_ref(ref='refs/heads/{}'.format(branch_name), sha=source.commit.sha)
+                        git_path = '{}/{}/ivy.xml'.format(config.PLUGINS_FOLDER, plugin)[1:]
+                        contents = get_repo().get_contents(git_path, ref=branch_name)
+                        with open(file_path, 'r') as xml_file:
+                            file_content = '\n'.join(xml_file.readlines())
+                            get_repo().update_file(contents.path, title, file_content, contents.sha, branch=branch_name,
+                                                   author=author)  # Commit and push update
+                        submit_upgrade_pull_request(dep['name'], old_version, new_version, branch_name)
+                    except GithubException:
+                        pass
 
                 df.modify_version(i, old_version)
                 df.save()
@@ -155,4 +199,8 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+
 

@@ -18,9 +18,12 @@ IVY_FILE_LIST = ["ivy/ivy.xml",
                  "src/plugin/any23/ivy.xml"]
 
 # GitHub settings
-REPO_LINK = "https://github.com/apache/nutch"
+REPO_LINK = "https://github.com/fireant-ci/nutch"
 REPO_PATH = ".repo"
 PLUGINS_FOLDER = "/src/plugin"
+NUM_PULLS_PER_PAGE = 25
+PULL_REQUEST_FORMAT = "fireant upgrade dependency {} from {} to {}"
+MAIN_BRANCH = "master"
 
 # Maven search settings
 MAVEN_SEARCH_URL = "https://search.maven.org/solrsearch/select?q=g:{}%20AND%20a:{}&core=gav&start=0&rows=20"
@@ -28,5 +31,5 @@ HTTP_RETRY_ATTEMPTS = 3
 
 
 # Sensitive settings !!! DO NOT PUSH !!!
-GITHUB_USERNAME="XXXXXXX"
-GITHUB_PASSWORD="XXXXXXX"
+GITHUB_USERNAME = "XXXXXXXXX"
+GITHUB_PASSWORD = "XXXXXXXXX"
