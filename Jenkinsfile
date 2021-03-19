@@ -18,8 +18,8 @@
 pipeline {
     agent any
     environment {
-        registry = 'mjemnawaz/newrepository'
-        registryCredential = 'dockerHub_ID'
+        registry = 'fireantci/fireant'
+        registryCredential = 'fireant_dockerhub_id'
         dockerImage = ''
     }
     stages {
