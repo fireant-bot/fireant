@@ -13,10 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Ivy test files
-IVY_FILE_LIST = ["ivy/ivy.xml",
-                 "src/plugin/any23/ivy.xml"]
-
 # GitHub settings
 REPO_LINK = "https://github.com/apache/nutch"
 REPO_PATH = ".repo"
