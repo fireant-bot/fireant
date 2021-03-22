@@ -18,15 +18,12 @@
 import subprocess
 import os
 import config
+from dependencyfile import DependencyFile
 
 from github import Github
 
 
-def setup_env():
-    REPO_LINK = config.REPO_LINK
-    # consider changing this to an absolute path
-    REPO_PATH = '.repo'
-
+def debug():
     print("Testing python docker image")
     subprocess.run(['java', '-version'])
     subprocess.run(['git', 'version'])
@@ -34,13 +31,27 @@ def setup_env():
     print("Testing env variables")
     print('JAVA_HOME:', os.environ['JAVA_HOME'])
     print('ANT_HOME:', os.environ['ANT_HOME'])
+    subprocess.run(['ant'], cwd=config.REPO_PATH)
+
+
+def setup_env():
+    REPO_LINK = config.REPO_LINK
+    REPO_PATH = config.REPO_PATH
+
     if not os.path.isdir(REPO_PATH):
         subprocess.run(['git', 'clone', REPO_LINK, REPO_PATH])
-    subprocess.run(['ant'], cwd=REPO_PATH)
 
 
 def main():
-    pass
+    # TODO dynamically get a list of all ivy.xml files
+    for c, f in enumerate(config.IVY_FILE_LIST):
+        df = DependencyFile(config.REPO_PATH + "/" + f)
+        # Update logic should go here
+        df.modify_version(0, "5.3.7")
+        df.print_log()
+        df.save(str(c) + '_example.xml')
+        df.print_log()
+        print()
 
 
 if __name__ == '__main__':

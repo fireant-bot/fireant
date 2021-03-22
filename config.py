@@ -15,6 +15,7 @@
 
 # GitHub settings
 REPO_LINK = "https://github.com/apache/nutch"
+REPO_PATH = ".repo"
 
 
 # Sensitive settings !!! DO NOT PUSH !!!
