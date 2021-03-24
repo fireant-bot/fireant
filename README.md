@@ -1,6 +1,7 @@
 # fireant
 
 [![Requirements Status](https://requires.io/github/fireant-bot/fireant/requirements.svg?branch=main)](https://requires.io/github/fireant-bot/fireant/requirements/?branch=main)
+[![DeepSource](https://deepsource.io/gh/fireant-bot/fireant.svg/?label=active+issues&show_trend=true)](https://deepsource.io/gh/fireant-bot/fireant/?ref=repository-badge)
 
 Fireant is a [Dependabot](https://dependabot.com/)-like service (tailored to [Apache Ant](https://ant.apache.org) + [Ivy](https://ant.apache.org/ivy) projects) which creates pull requests to keep your dependencies secure and up-to-date.
 
