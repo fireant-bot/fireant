@@ -14,8 +14,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.	
  
- test
- 
 */
 
 pipeline {
@@ -47,7 +45,7 @@ pipeline {
                 }
             }
         }
-     /*
+     
         stage('Stop') {
             steps {
                 sh 'docker ps -f name=fireant -q | xargs --no-run-if-empty docker container stop'
@@ -60,7 +58,7 @@ pipeline {
                     dockerImage.run("-p 8096:5000 --rm --name fireant")
                 }
             }
-        }*/
+        }
     }
 }
 
