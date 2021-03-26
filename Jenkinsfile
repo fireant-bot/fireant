@@ -26,7 +26,7 @@ pipeline {
     stages {
         stage('Checkout'){
             steps {
-                checkout([$class: 'GitSCM', branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/fireant-ci/fireant.git']]])
+                checkout([$class: 'GitSCM', branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/fireant-bot/fireant.git']]])
             }
         }
         stage('Build') {
