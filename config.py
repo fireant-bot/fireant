@@ -18,6 +18,9 @@ REPO_LINK = "https://github.com/apache/nutch"
 REPO_PATH = ".repo"
 
 
+# requires.io settings
+REQUIRES_IO_TOKEN = "XXXXXXXXXXXXX"
+
 # Sensitive settings !!! DO NOT PUSH !!!
 GITHUB_USERNAME="XXXXXXX"
 GITHUB_PASSWORD="XXXXXXX"
