@@ -14,8 +14,23 @@
 # limitations under the License.
 
 import xml.etree.ElementTree as Et
-from html import unescape
 import xml.sax.saxutils as saxutils
+
+XML_LICENSE = """\n<!-- Licensed to the Apache Software Foundation (ASF) under one or more
+   contributor license agreements.  See the NOTICE file distributed with
+   this work for additional information regarding copyright ownership.
+   The ASF licenses this file to You under the Apache License, Version 2.0
+   (the "License"); you may not use this file except in compliance with
+   the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->\n\n"""
 
 
 class DependencyFile:
@@ -76,15 +91,30 @@ class DependencyFile:
         log_msg = "Update " + name + " " + old_version + " -> " + version
         self.unsaved_changelog.append(log_msg)
 
+    def __write(self, path):
+        # Write modified xml (non-escaped and missing header)
+        self.__xml_tree.write(path, encoding="utf-8", method='xml', xml_declaration=True)
+
+        f = open(path, "r")
+        content = f.readlines()
+        f.close()
+
+        # Insert license and escape symbols
+        content.insert(1, XML_LICENSE)
+        content = "".join(content)
+        content = saxutils.unescape(content)
+
+        f = open(path, "w")
+        f.write(content)
+        f.close()
+
     # Save changes back to the original xml file
     # (path is only for debugging/testing purposes)
     def save(self, path=None):
-        print(type(Et.tostring(self.__xml_tree.getroot())))
         if path:
-            self.__xml_tree.write(path, encoding="utf-8")
-
+            self.__write(path)
         else:
-            self.__xml_tree.write(self.path, encoding="utf-8")
+            self.__write(self.path)
 
         # Logging
         self.saved_changelog.extend(self.unsaved_changelog)

@@ -18,10 +18,6 @@ NETWORKING_THREADS_MAVEN = 8
 NETWORKING_THREADS_GITHUB = 2
 MAXIMUM_DEPENDENCIES = 1000
 
-# Ivy test files
-IVY_FILE_LIST = ["ivy/ivy.xml",
-                 "src/plugin/any23/ivy.xml"]
-
 # GitHub settings
 REPO_LINK = "https://github.com/fireant-ci/nutch"
 REPO_PATH = ".repo"
@@ -35,7 +31,7 @@ MAVEN_SEARCH_URL = "https://search.maven.org/solrsearch/select?q=g:{}%20AND%20a:
 HTTP_RETRY_ATTEMPTS = 3
 
 # Sensitive settings !!! DO NOT PUSH !!!
-GITHUB_USERNAME = "XXXXXXXX"
-GITHUB_PASSWORD = "XXXXXXXX"
-GITHUB_EMAIL = "XXXXXXXXXXXXXXX"
-REQUIRES_IO_TOKEN = "XXXXXXXXXXXXXXXXXXXXXX"
+GITHUB_USERNAME = "X"
+GITHUB_PASSWORD = "X"
+GITHUB_EMAIL = "X"
+REQUIRES_IO_TOKEN = "X"
