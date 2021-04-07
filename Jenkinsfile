@@ -26,9 +26,15 @@ pipeline {
         cron('0 0 * * *')
     }
     stages {
-        stage('Checkout'){
+        stage('Checkout') {
             steps {
-                checkout([$class: 'GitSCM', branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/fireant-bot/fireant.git']]])
+                checkout(
+                    [$class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    extensions: [],
+                    userRemoteConfigs: [[url: 'https://github.com/fireant-bot/fireant.git']]
+                	]
+                )
             }
         }
         stage('Build') {
@@ -63,5 +69,3 @@ pipeline {
         }*/
     }
 }
-
-
