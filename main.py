@@ -15,6 +15,8 @@
 
 #!/usr/bin/python3
 
+
+import glob
 import json
 import subprocess
 import threading
@@ -55,23 +57,27 @@ def newest_dependency_version(org, name):
         raise urllib3.exceptions.ConnectionError
 
     resp = json.loads(resp.data)
+
+    # Ensure the version is stable (e.g., alpha or beta not in version)
     i = 0
     while any(char.isalpha() for char in resp['response']['docs'][i]['v']):
         i += 1
     version = resp['response']['docs'][i]['v']
+
     return version
 
 
 def tag_new_dep_version(dependencies):
-    dep_queue = Queue(1000)
-    new_dep_queue = Queue(1000)
+    dep_queue = Queue(config.MAXIMUM_DEPENDENCIES)
+    new_dep_queue = Queue(config.MAXIMUM_DEPENDENCIES)
     for dep in dependencies:
         dep_queue.put(dep)
 
     threads = []
-    for i in range(8):
-        t = threading.Thread(target=run, name='th-' + str(i), kwargs={'dep_queue': dep_queue,
-                                                                      'new_dep_queue': new_dep_queue})
+    for i in range(config.NETWORKING_THREADS_MAVEN):
+        t = threading.Thread(target=tag_run, name='th-{}'.format(i), kwargs={'dep_queue': dep_queue,
+                                                                             'new_dep_queue': new_dep_queue
+                                                                             })
         threads.append(t)
     for t in threads:
         t.start()
@@ -81,7 +87,7 @@ def tag_new_dep_version(dependencies):
     return new_dep_queue
 
 
-def run(dep_queue, new_dep_queue):
+def tag_run(dep_queue, new_dep_queue):
     while not dep_queue.empty():
         dep = dep_queue.get()
         new_version = None
@@ -117,87 +123,117 @@ def get_open_pull_requests():
     return pull_title_dict
 
 
-def submit_upgrade_pull_request(name, old_version, new_version, branch):
-    title = config.PULL_REQUEST_FORMAT.format(name, old_version, new_version)
+def submit_upgrade_pull_request(name, path, new_version, branch):
+    title = config.PULL_REQUEST_FORMAT.format(name, path, new_version)
     pr = get_repo().create_pull(title=title, body=title, head=branch, base="master")
     print('Created pull request: {}'.format(pr))
 
 
-def main():
+def get_dependencies():
     dependencies = []
+    for dep_file in glob.glob('{}/**/ivy.xml'.format(config.REPO_PATH.replace('/', '')), recursive=True):
+        df = DependencyFile(dep_file)
+        for dep in df.dependency_list():
+            dependencies.append(dep)
 
-    print("Adding dependencies from ivy.xml")
-    # Add all dependencies in main ivy file
-    df = DependencyFile('{}/ivy/ivy.xml'.format(config.REPO_PATH))
-    for dep in df.dependency_list():
-        dependencies.append(dep)
+    return dependencies
 
-    print("Adding dependencies from plugins")
-    # Add all dependencies from plugins
-    repo_plugins_folder = config.REPO_PATH + config.PLUGINS_FOLDER
-    for plugin in os.listdir('{}'.format(repo_plugins_folder)):
-        if os.path.isdir('{}/{}'.format(repo_plugins_folder, plugin)) and \
-                os.path.exists('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin)):
-            df = DependencyFile('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin))
-            for dep in df.dependency_list():
-                dependencies.append(dep)
 
-    # Convert queue to dict
+def find_updated_dependency_versions(dependencies):
     dep_dict = {}
     dep_queue = tag_new_dep_version(dependencies)
     while not dep_queue.empty():
         dep = dep_queue.get()
         if dep['rev'] != dep['new_version']:
             dep_dict.update({'{}-{}'.format(dep['org'], dep['name']): dep})
-            # print('Should update {} from version {} to version {}'.format(dep['name'], dep['rev'], dep['new_version']))
+            print('Should update {} from version {} to version {}'.format(dep['name'], dep['rev'], dep['new_version']))
+    return dep_dict
 
-    print("Getting pull requests")
 
-    # TODO: ALSO INCLUDE ivy/ivy.xml
-    pull_title_dict = get_open_pull_requests()
-    for plugin in os.listdir('{}'.format(repo_plugins_folder)):
-        if os.path.isdir('{}/{}'.format(repo_plugins_folder, plugin)) and \
-                os.path.exists('{}/{}/ivy.xml'.format(repo_plugins_folder, plugin)):
+def update_dependencies(dep_dict, open_pull_requests):
+    file_queue = Queue(config.MAXIMUM_DEPENDENCIES)
+    for dep_file in glob.glob('{}/**/ivy.xml'.format(config.REPO_PATH.replace('/', '')), recursive=True):
+        file_queue.put(dep_file)
 
-            file_path = '{}/{}/ivy.xml'.format(repo_plugins_folder, plugin)
-            df = DependencyFile(file_path)
+    threads = []
+    for i in range(config.NETWORKING_THREADS_GITHUB):
+        t = threading.Thread(target=update_run, name='th-{}'.format(i), kwargs={'file_queue': file_queue,
+                                                                                'dep_dict': dep_dict,
+                                                                                'open_pull_requests': open_pull_requests
+                                                                                })
+        threads.append(t)
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
 
-            for i, dep in enumerate(df.dependency_list()):
-                # If no update needed
-                if not dep or '{}-{}'.format(dep['org'], dep['name']) not in dep_dict:
-                    continue
 
-                old_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['rev']
-                new_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['new_version']
+def update_run(file_queue, dep_dict, open_pull_requests):
+    while not file_queue.empty():
+        file_path = file_queue.get()
+        df = DependencyFile(file_path)
+        for i, dep in enumerate(df.dependency_list()):
+            # If no update needed
+            if not dep or '{}-{}'.format(dep['org'], dep['name']) not in dep_dict:
+                continue
 
-                df.modify_version(i, new_version)
-                df.save()
+            old_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['rev']
+            new_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['new_version']
 
-                title = config.PULL_REQUEST_FORMAT.format(dep['name'], old_version, new_version)
-                if title not in pull_title_dict:
-                    author = InputGitAuthor(
-                        "fireant-ci",
-                        "jaqwertyuiop12345@gmail.com"
-                    )
-                    branch_name = 'fireant_{}_{}'.format(dep['name'], new_version)
-                    source = get_repo().get_branch(config.MAIN_BRANCH)
-                    try:
-                        get_repo().create_git_ref(ref='refs/heads/{}'.format(branch_name), sha=source.commit.sha)
-                        git_path = '{}/{}/ivy.xml'.format(config.PLUGINS_FOLDER, plugin)[1:]
-                        contents = get_repo().get_contents(git_path, ref=branch_name)
-                        with open(file_path, 'r') as xml_file:
-                            file_content = '\n'.join(xml_file.readlines())
-                            get_repo().update_file(contents.path, title, file_content, contents.sha, branch=branch_name,
-                                                   author=author)  # Commit and push update
-                        submit_upgrade_pull_request(dep['name'], old_version, new_version, branch_name)
-                    except GithubException:
-                        pass
+            df.modify_version(i, new_version)
+            df.save()
 
-                df.modify_version(i, old_version)
-                df.save()
+            title = config.PULL_REQUEST_FORMAT.format(dep['name'], file_path, new_version)
+            if title not in open_pull_requests:
+                author = InputGitAuthor(
+                    config.GITHUB_USERNAME,
+                    config.GITHUB_EMAIL
+                )
+                branch_name = 'fireant_{}_{}'.format(dep['name'], new_version)
+                source = get_repo().get_branch(config.MAIN_BRANCH)
+                try:
+                    print('Submitting pull request: {}'.format(title))
+                    get_repo().create_git_ref(ref='refs/heads/{}'.format(branch_name), sha=source.commit.sha)
+                    strip_from = len(config.REPO_PATH.replace('/', '') + '/')
+                    git_path = file_path[strip_from:]
+                    contents = get_repo().get_contents(git_path, ref=branch_name)
+                    with open(file_path, 'r') as xml_file:
+                        file_content = ''.join(xml_file.readlines())
+                        get_repo().update_file(contents.path, title, file_content, contents.sha, branch=branch_name,
+                                               author=author)  # Commit and push update
+                    submit_upgrade_pull_request(dep['name'], file_path, new_version, branch_name)
+                except GithubException as e:
+                    print(e)
+
+            df.modify_version(i, old_version)
+            df.save()
+
+
+def main():
+    # Pull dependencies from local repo
+    print("\n\nPulling dependencies from local repo")
+    print('*********************************************************************************************')
+    dependencies = get_dependencies()
+
+    # Tag the dependencies with new versions pulled from Maven
+    print("\n\nPulling new dependency versions from maven")
+    print('*********************************************************************************************')
+    dependency_dict = find_updated_dependency_versions(dependencies)
+
+    # Get current open pull requests
+    print("\n\nGetting all current pull requests")
+    print('*********************************************************************************************')
+    open_pull_requests = get_open_pull_requests()
+
+    # Submit pull requests for all dependencies that must be updated
+    # but that do not currently have a corresponding pull request
+    print("\n\nSubmitting pull request updates")
+    print('*********************************************************************************************')
+    update_dependencies(dependency_dict, open_pull_requests)
 
 
 if __name__ == '__main__':
+    setup_env()
     main()
 
 
