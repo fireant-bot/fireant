@@ -44,7 +44,6 @@ def debug():
 def setup_env():
     REPO_LINK = config.REPO_LINK
     REPO_PATH = config.REPO_PATH
-
     if not os.path.isdir(REPO_PATH):
         subprocess.run(['git', 'clone', REPO_LINK, REPO_PATH])
 
@@ -52,18 +51,14 @@ def setup_env():
 def newest_dependency_version(org, name):
     http = urllib3.PoolManager()
     resp = http.request('GET', config.MAVEN_SEARCH_URL.format(org, name))
-
     if resp.status != 200:
         raise urllib3.exceptions.ConnectionError
-
     resp = json.loads(resp.data)
-
     # Ensure the version is stable (e.g., alpha or beta not in version)
     i = 0
     while any(char.isalpha() for char in resp['response']['docs'][i]['v']):
         i += 1
     version = resp['response']['docs'][i]['v']
-
     return version
 
 
@@ -72,7 +67,6 @@ def tag_new_dep_version(dependencies):
     new_dep_queue = Queue(config.MAXIMUM_DEPENDENCIES)
     for dep in dependencies:
         dep_queue.put(dep)
-
     threads = []
     for i in range(config.NETWORKING_THREADS_MAVEN):
         t = threading.Thread(target=tag_run, name='th-{}'.format(i), kwargs={'dep_queue': dep_queue,
@@ -83,7 +77,6 @@ def tag_new_dep_version(dependencies):
         t.start()
     for t in threads:
         t.join()
-
     return new_dep_queue
 
 
@@ -97,10 +90,8 @@ def tag_run(dep_queue, new_dep_queue):
                 new_version = newest_dependency_version(dep['org'], dep['name'])
             except IndexError:
                 attempts -= 1
-
         if not new_version:
             continue
-
         dep['new_version'] = new_version
         new_dep_queue.put(dep)
 
@@ -125,7 +116,7 @@ def get_open_pull_requests():
 
 def submit_upgrade_pull_request(name, path, new_version, branch):
     title = config.PULL_REQUEST_FORMAT.format(name, path, new_version)
-    pr = get_repo().create_pull(title=title, body=title, head=branch, base="master")
+    pr = get_repo().create_pull(title=title, body=title, head=branch, base=config.MAIN_BRANCH)
     print('Created pull request: {}'.format(pr))
 
 
@@ -135,7 +126,6 @@ def get_dependencies():
         df = DependencyFile(dep_file)
         for dep in df.dependency_list():
             dependencies.append(dep)
-
     return dependencies
 
 
@@ -154,7 +144,6 @@ def update_dependencies(dep_dict, open_pull_requests):
     file_queue = Queue(config.MAXIMUM_DEPENDENCIES)
     for dep_file in glob.glob('{}/**/ivy.xml'.format(config.REPO_PATH.replace('/', '')), recursive=True):
         file_queue.put(dep_file)
-
     threads = []
     for i in range(config.NETWORKING_THREADS_GITHUB):
         t = threading.Thread(target=update_run, name='th-{}'.format(i), kwargs={'file_queue': file_queue,
@@ -176,13 +165,10 @@ def update_run(file_queue, dep_dict, open_pull_requests):
             # If no update needed
             if not dep or '{}-{}'.format(dep['org'], dep['name']) not in dep_dict:
                 continue
-
             old_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['rev']
             new_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['new_version']
-
             df.modify_version(i, new_version)
             df.save()
-
             title = config.PULL_REQUEST_FORMAT.format(dep['name'], file_path, new_version)
             if title not in open_pull_requests:
                 author = InputGitAuthor(
@@ -204,7 +190,6 @@ def update_run(file_queue, dep_dict, open_pull_requests):
                     submit_upgrade_pull_request(dep['name'], file_path, new_version, branch_name)
                 except GithubException as e:
                     print(e)
-
             df.modify_version(i, old_version)
             df.save()
 
@@ -214,17 +199,14 @@ def main():
     print("\n\nPulling dependencies from local repo")
     print('*********************************************************************************************')
     dependencies = get_dependencies()
-
     # Tag the dependencies with new versions pulled from Maven
     print("\n\nPulling new dependency versions from maven")
     print('*********************************************************************************************')
     dependency_dict = find_updated_dependency_versions(dependencies)
-
     # Get current open pull requests
     print("\n\nGetting all current pull requests")
     print('*********************************************************************************************')
     open_pull_requests = get_open_pull_requests()
-
     # Submit pull requests for all dependencies that must be updated
     # but that do not currently have a corresponding pull request
     print("\n\nSubmitting pull request updates")
@@ -235,8 +217,3 @@ def main():
 if __name__ == '__main__':
     setup_env()
     main()
-
-
-
-
-
