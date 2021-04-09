@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+/* groovylint-disable CompileStatic, NestedBlockDepth */
+
 pipeline {
     agent any
     environment {
@@ -33,7 +35,7 @@ pipeline {
                     branches: [[name: '*/main']],
                     extensions: [],
                     userRemoteConfigs: [[url: 'https://github.com/fireant-bot/fireant.git']]
-                	]
+                    ]
                 )
             }
         }
