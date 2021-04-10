@@ -16,25 +16,17 @@
 FROM python:3.9
 
 WORKDIR /usr/src/app
-ARG APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
-ENV JAVA_HOME /usr/lib/jvm/adoptopenjdk-8-hotspot-amd64
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64
 ENV ANT_HOME /usr/share/apache-ant
 
 # Install python dependencies
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Setup custom repo for java 8 on Debian Buster
-RUN apt-get -y update
-RUN apt-get -y install software-properties-common sudo
-RUN wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | sudo apt-key add -
-RUN add-apt-repository --yes https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/
-
 # Install packages
 RUN apt-get -y update
-RUN apt-get -y install ant adoptopenjdk-8-hotspot git
-
-#
+RUN apt-get -y install ant openjdk-11-jdk git
+RUN ls -lah /usr/lib/jvm
 
 COPY . .
 
