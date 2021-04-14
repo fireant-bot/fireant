@@ -1,3 +1,4 @@
 PyGithub
 pytest
 requires.io
+urllib3
