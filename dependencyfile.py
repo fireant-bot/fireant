@@ -15,7 +15,7 @@
 
 from os import remove
 from shutil import copyfile
-import xml.etree.ElementTree as Et
+import defusedxml.ElementTree as Et
 import xml.sax.saxutils as saxutils
 
 
@@ -38,8 +38,11 @@ XML_LICENSE = """\n<!-- Licensed to the Apache Software Foundation (ASF) under o
 
 class DependencyFile:
     def __str__(self):
-        for item in self.xml_tree.getroot().iter('dependency'):
+        res = []
+        for item in self.__xml_tree.getroot().iter('dependency'):
             print(item.attrib)
+            res.append(str(item.attrib) + '\n')
+        return "".join(res)
 
     # Initialize class with a given filepath
     def __init__(self, path):
@@ -48,15 +51,15 @@ class DependencyFile:
         self.unsaved_changelog = []
         self.__dependency_list = []
         # Parse xml and preserve original comments
-        self.xml_tree = Et.parse(path,
+        self.__xml_tree = Et.parse(path,
                                    Et.XMLParser(
-                                       target=Et.TreeBuilder(insert_comments=True),
+                                       target=Et._TreeBuilder(insert_comments=True),
                                        encoding="utf-8"))
 
-        for count, item in enumerate(self.xml_tree.getroot()):
+        for count, item in enumerate(self.__xml_tree.getroot()):
             if item.tag != 'dependencies':
                 continue
-            self.dependencies_index = count
+            self.__dependencies_index = count
 
             for dependency in item:
                 self.__dependency_list.append(dependency.attrib)
@@ -85,7 +88,7 @@ class DependencyFile:
     # Accepts index of the dependency (from the list)
     # and the new version number
     def modify_version(self, index: int, version: str):
-        xml_dependency = self.xml_tree.getroot()[self.dependencies_index][index]
+        xml_dependency = self.__xml_tree.getroot()[self.__dependencies_index][index]
         name = xml_dependency.attrib['name']
         old_version = xml_dependency.attrib['rev']
 
@@ -98,7 +101,7 @@ class DependencyFile:
 
     # Removes a dependency
     def remove(self, index: int):
-        xml_dependency = self.xml_tree.getroot()[self.dependencies_index]
+        xml_dependency = self.__xml_tree.getroot()[self.__dependencies_index]
         name = xml_dependency[index].attrib['name']
         old_version = xml_dependency[index].attrib['rev']
         xml_dependency.remove(xml_dependency[index])
@@ -108,7 +111,7 @@ class DependencyFile:
 
     def __write(self, path):
         # Write modified xml (non-escaped and missing header)
-        self.xml_tree.write(path, encoding="utf-8", method='xml', xml_declaration=True)
+        self.__xml_tree.write(path, encoding="utf-8", method='xml', xml_declaration=True)
 
         f = open(path, "r")
         content = f.readlines()
@@ -147,15 +150,15 @@ class DependencyFile:
         self.unsaved_changelog = []
         self.__dependency_list = []
         # Parse xml and preserve original comments
-        self.xml_tree = Et.parse(self.path,
+        self.__xml_tree = Et.parse(self.path,
                                  Et.XMLParser(
-                                     target=Et.TreeBuilder(insert_comments=True),
+                                     target=Et._TreeBuilder(insert_comments=True),
                                      encoding="utf-8"))
 
-        for count, item in enumerate(self.xml_tree.getroot()):
+        for count, item in enumerate(self.__xml_tree.getroot()):
             if item.tag != 'dependencies':
                 continue
-            self.dependencies_index = count
+            self.__dependencies_index = count
 
             for dependency in item:
                 self.__dependency_list.append(dependency.attrib)
