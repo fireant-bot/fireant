@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from os import remove
+from shutil import copyfile
 import xml.etree.ElementTree as Et
 import xml.sax.saxutils as saxutils
+
 
 XML_LICENSE = """\n<!-- Licensed to the Apache Software Foundation (ASF) under one or more
    contributor license agreements.  See the NOTICE file distributed with
@@ -35,7 +38,7 @@ XML_LICENSE = """\n<!-- Licensed to the Apache Software Foundation (ASF) under o
 
 class DependencyFile:
     def __str__(self):
-        for item in self.__xml_tree.getroot().iter('dependency'):
+        for item in self.xml_tree.getroot().iter('dependency'):
             print(item.attrib)
 
     # Initialize class with a given filepath
@@ -45,18 +48,20 @@ class DependencyFile:
         self.unsaved_changelog = []
         self.__dependency_list = []
         # Parse xml and preserve original comments
-        self.__xml_tree = Et.parse(path,
+        self.xml_tree = Et.parse(path,
                                    Et.XMLParser(
                                        target=Et.TreeBuilder(insert_comments=True),
                                        encoding="utf-8"))
 
-        for count, item in enumerate(self.__xml_tree.getroot()):
+        for count, item in enumerate(self.xml_tree.getroot()):
             if item.tag != 'dependencies':
                 continue
-            self.__dependencies_index = count
+            self.dependencies_index = count
 
             for dependency in item:
                 self.__dependency_list.append(dependency.attrib)
+        self.__backup = '/tmp/{}.bak'.format(hash(path))
+        self.__save_backup()
 
     # Print log of all saved/unsaved changes
     def print_log(self):
@@ -80,7 +85,7 @@ class DependencyFile:
     # Accepts index of the dependency (from the list)
     # and the new version number
     def modify_version(self, index: int, version: str):
-        xml_dependency = self.__xml_tree.getroot()[self.__dependencies_index][index]
+        xml_dependency = self.xml_tree.getroot()[self.dependencies_index][index]
         name = xml_dependency.attrib['name']
         old_version = xml_dependency.attrib['rev']
 
@@ -91,9 +96,19 @@ class DependencyFile:
         log_msg = "Update " + name + " " + old_version + " -> " + version
         self.unsaved_changelog.append(log_msg)
 
+    # Removes a dependency
+    def remove(self, index: int):
+        xml_dependency = self.xml_tree.getroot()[self.dependencies_index]
+        name = xml_dependency[index].attrib['name']
+        old_version = xml_dependency[index].attrib['rev']
+        xml_dependency.remove(xml_dependency[index])
+        # Logging
+        log_msg = "Remove " + name + " " + old_version
+        self.unsaved_changelog.append(log_msg)
+
     def __write(self, path):
         # Write modified xml (non-escaped and missing header)
-        self.__xml_tree.write(path, encoding="utf-8", method='xml', xml_declaration=True)
+        self.xml_tree.write(path, encoding="utf-8", method='xml', xml_declaration=True)
 
         f = open(path, "r")
         content = f.readlines()
@@ -119,3 +134,28 @@ class DependencyFile:
         # Logging
         self.saved_changelog.extend(self.unsaved_changelog)
         self.unsaved_changelog = []
+
+    def __save_backup(self):
+        copyfile(self.path, self.__backup)
+
+    def close(self):
+        remove(self.__backup)
+
+    def revert_copy(self):
+        copyfile(self.__backup, self.path)
+        self.saved_changelog = []
+        self.unsaved_changelog = []
+        self.__dependency_list = []
+        # Parse xml and preserve original comments
+        self.xml_tree = Et.parse(self.path,
+                                 Et.XMLParser(
+                                     target=Et.TreeBuilder(insert_comments=True),
+                                     encoding="utf-8"))
+
+        for count, item in enumerate(self.xml_tree.getroot()):
+            if item.tag != 'dependencies':
+                continue
+            self.dependencies_index = count
+
+            for dependency in item:
+                self.__dependency_list.append(dependency.attrib)
