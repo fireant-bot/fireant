@@ -17,6 +17,7 @@
 NETWORKING_THREADS_MAVEN = 8
 NETWORKING_THREADS_GITHUB = 1
 MAXIMUM_DEPENDENCIES = 1000
+TMP_DIRECTORY = "/tmp"
 
 # GitHub settings
 REPO_LINK = "https://github.com/fireant-ci/nutch"

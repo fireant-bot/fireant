@@ -1,0 +1,55 @@
+<?xml version="1.0" ?>
+
+<!-- Licensed to the Apache Software Foundation (ASF) under one or more
+   contributor license agreements.  See the NOTICE file distributed with
+   this work for additional information regarding copyright ownership.
+   The ASF licenses this file to You under the Apache License, Version 2.0
+   (the "License"); you may not use this file except in compliance with
+   the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
+
+<ivy-module version="1.0" xmlns:maven="http://ant.apache.org/ivy/maven">
+	<info organisation="org.apache.nutch" module="nutch">
+		<license name="Apache 2.0"
+			url="https://www.apache.org/licenses/LICENSE-2.0.txt" />
+		<ivyauthor name="Apache Nutch Team" url="https://nutch.apache.org/" />
+		<description homepage="https://nutch.apache.org/">Nutch is an open source web-search
+			software. It builds on Hadoop, Tika and Solr, adding web-specifics,
+			such as a crawler, a link-graph database etc.
+		</description>
+	</info>
+
+	<configurations>
+		<include file="${basedir}/ivy/ivy-configurations.xml" />
+	</configurations>
+
+	<publications>
+		<!--get the artifact from our module name -->
+		<artifact conf="master" />
+	</publications>
+
+	<dependencies>
+		<dependency org="org.slf4j" name="slf4j-api" rev="1.7.30" conf="*->master" />
+		<dependency org="org.slf4j" name="slf4j-log4j12" rev="1.7.30" conf="*->master" />
+
+		<dependency org="org.apache.commons" name="commons-lang3" rev="3.11" conf="*->default" />
+		<dependency org="org.apache.commons" name="commons-collections4" rev="4.4" conf="*->master" />
+
+                <!-- Example of duplicate/double dependency -->
+                <dependency org="org.mortbay.jetty" name="jetty" rev="6.1.26" conf="test->default" />
+                <dependency org="org.mortbay.jetty" name="jetty" rev="6.1.26" />
+
+                <dependency org="org.apache.mrunit" name="mrunit" rev="1.1.0" conf="test->default">
+                        <artifact name="mrunit" maven:classifier="hadoop2" />
+                        <exclude org="log4j" module="log4j" />
+                </dependency>
+	</dependencies>
+</ivy-module>

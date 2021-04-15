@@ -40,7 +40,6 @@ class DependencyFile:
     def __str__(self):
         res = []
         for item in self.__xml_tree.getroot().iter('dependency'):
-            print(item.attrib)
             res.append(str(item.attrib) + '\n')
         return "".join(res)
 
@@ -63,7 +62,7 @@ class DependencyFile:
 
             for dependency in item:
                 self.__dependency_list.append(dependency.attrib)
-        self.__backup = '/tmp/{}.bak'.format(hash(path))
+        self.__backup = '{}/{}.bak'.format(config.TMP_DIRECTORY, hash(path))
         self.__save_backup()
 
     # Print log of all saved/unsaved changes
