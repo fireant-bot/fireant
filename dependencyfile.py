@@ -35,8 +35,10 @@ XML_LICENSE = """\n<!-- Licensed to the Apache Software Foundation (ASF) under o
 
 class DependencyFile:
     def __str__(self):
+        res = []
         for item in self.__xml_tree.getroot().iter('dependency'):
-            print(item.attrib)
+            res.append(str(item.attrib) + '\n')
+        return "".join(res)
 
     # Initialize class with a given filepath
     def __init__(self, path):
