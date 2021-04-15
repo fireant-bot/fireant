@@ -1,3 +1,4 @@
+defusedxml
 PyGithub
 requires.io
 urllib3
