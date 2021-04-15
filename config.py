@@ -23,7 +23,7 @@ REPO_LINK = "https://github.com/fireant-ci/nutch"
 REPO_PATH = ".repo"
 PLUGINS_FOLDER = "/src/plugin"
 NUM_PULLS_PER_PAGE = 25
-PULL_REQUEST_FORMAT = "fireant upgrade dependency {} in {} to {}"
+PULL_REQUEST_FORMAT = "fireant-bot upgrade dependency {} in {} to {}"
 MAIN_BRANCH = "master"
 
 # Maven search settings
