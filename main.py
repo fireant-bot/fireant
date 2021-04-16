@@ -190,8 +190,6 @@ def update_run(file_queue, dep_dict, open_pull_requests):
             df.modify_version(i, new_version)
             df.save()
             title = config.PULL_REQUEST_FORMAT.format(dep['name'], file_path, new_version)
-            if file_path != '.repo/ivy/ivy.xml':
-                continue
             if title not in open_pull_requests:
                 author = InputGitAuthor(
                     config.GITHUB_USERNAME,
