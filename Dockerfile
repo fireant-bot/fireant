@@ -24,9 +24,9 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install packages
-RUN apt-get -y update
-RUN apt-get -y install ant openjdk-11-jdk git
-RUN ls -lah /usr/lib/jvm
+RUN apt-get update && apt-get -y install ant openjdk-11-jdk git \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY . .
 
