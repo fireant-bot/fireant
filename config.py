@@ -15,15 +15,17 @@
 
 # Fireant settings
 NETWORKING_THREADS_MAVEN = 8
-NETWORKING_THREADS_GITHUB = 2
+NETWORKING_THREADS_GITHUB = 1
 MAXIMUM_DEPENDENCIES = 1000
+TMP_DIRECTORY = "/tmp"
 
 # GitHub settings
 REPO_LINK = "https://github.com/fireant-ci/nutch"
 REPO_PATH = ".repo"
 PLUGINS_FOLDER = "/src/plugin"
 NUM_PULLS_PER_PAGE = 25
-PULL_REQUEST_FORMAT = "fireant-bot upgrade dependency {} in {} to {}"
+PULL_REQUEST_FORMAT = "fireant upgrade dependency {} in {} to {}"
+DUPLICATE_MESSAGE = " and duplicate dependency deleted"
 MAIN_BRANCH = "master"
 
 # Maven search settings

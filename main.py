@@ -114,8 +114,10 @@ def get_open_pull_requests():
     return pull_title_dict
 
 
-def submit_upgrade_pull_request(name, path, new_version, branch):
+def submit_upgrade_pull_request(name, path, new_version, branch, duplicate=False):
     title = config.PULL_REQUEST_FORMAT.format(name, path, new_version)
+    if duplicate:
+        title += config.DUPLICATE_MESSAGE
     pr = get_repo().create_pull(title=title, body=title, head=branch, base=config.MAIN_BRANCH)
     print('Created pull request: {}'.format(pr))
 
@@ -140,6 +142,12 @@ def find_updated_dependency_versions(dependencies):
     return dep_dict
 
 
+def is_dependency_valid(dep, dep_dict):
+    if not dep or 'org' not in dep or 'name' not in dep or '{}-{}'.format(dep['org'], dep['name']) not in dep_dict:
+        return False
+    return True
+
+
 def update_dependencies(dep_dict, open_pull_requests):
     file_queue = Queue(config.MAXIMUM_DEPENDENCIES)
     for dep_file in glob.glob('{}/**/ivy.xml'.format(config.REPO_PATH.replace('/', '')), recursive=True):
@@ -161,15 +169,29 @@ def update_run(file_queue, dep_dict, open_pull_requests):
     while not file_queue.empty():
         file_path = file_queue.get()
         df = DependencyFile(file_path)
+        deps = {}
         for i, dep in enumerate(df.dependency_list()):
-            # If no update needed
-            if not dep or '{}-{}'.format(dep['org'], dep['name']) not in dep_dict:
+            # If invalid entry; also check for duplicates earlier in file
+            if not is_dependency_valid(dep, dep_dict) or '{}-{}'.format(dep['org'], dep['name']) in deps:
                 continue
-            old_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['rev']
+            # Check for duplicates later in file
+            remove = []
+            for j, dupe_dep in enumerate(df.dependency_list()[i+1:]):
+                if not is_dependency_valid(dupe_dep, dep_dict):
+                    continue
+                if dep['org'] == dupe_dep['org'] and dep['name'] == dupe_dep['name']:
+                    print('Removing duplicate: {} - {} in {}'.format(dep['org'], dep['name'], file_path))
+                    remove.append(j)
+            # Remove duplicates
+            for j, dupe_dep_num in enumerate(remove):
+                df.remove(dupe_dep_num-j+i+1)
+            deps.update({'{}-{}'.format(dep['org'], dep['name']): 1})
             new_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['new_version']
             df.modify_version(i, new_version)
             df.save()
             title = config.PULL_REQUEST_FORMAT.format(dep['name'], file_path, new_version)
+            if file_path != '.repo/ivy/ivy.xml':
+                continue
             if title not in open_pull_requests:
                 author = InputGitAuthor(
                     config.GITHUB_USERNAME,
@@ -187,11 +209,11 @@ def update_run(file_queue, dep_dict, open_pull_requests):
                         file_content = ''.join(xml_file.readlines())
                         get_repo().update_file(contents.path, title, file_content, contents.sha, branch=branch_name,
                                                author=author)  # Commit and push update
-                    submit_upgrade_pull_request(dep['name'], file_path, new_version, branch_name)
+                    submit_upgrade_pull_request(dep['name'], git_path, new_version, branch_name, len(remove) > 0)
                 except GithubException as e:
                     print(e)
-            df.modify_version(i, old_version)
-            df.save()
+            df.revert_copy()
+        df.close()
 
 
 def main():
