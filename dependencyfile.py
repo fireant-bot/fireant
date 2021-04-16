@@ -16,7 +16,8 @@
 from os import remove
 from shutil import copyfile
 from defusedxml.ElementTree import parse, XMLParser
-import xml.etree.ElementTree as ET  # Not using this module in an unsafe way -- skipcq: BAN-B314
+# import xml.etree.ElementTree as ET  # Not using this module in an unsafe way -- skipcq: BAN-B405
+import xml.etree.ElementTree.TreeBuilder as TB
 import config
 import xml.sax.saxutils as saxutils
 
@@ -52,7 +53,7 @@ class DependencyFile:
         self.unsaved_changelog = []
         self.__dependency_list = []
         # Parse xml and preserve original comments
-        self.__xml_tree = parse(self.path, XMLParser(target=ET.TreeBuilder(insert_comments=True), encoding='utf-8'))
+        self.__xml_tree = parse(self.path, XMLParser(target=TB(insert_comments=True), encoding='utf-8'))
 
         for count, item in enumerate(self.__xml_tree.getroot()):
             if item.tag != 'dependencies':
@@ -148,7 +149,7 @@ class DependencyFile:
         self.unsaved_changelog = []
         self.__dependency_list = []
         # Parse xml and preserve original comments
-        self.__xml_tree = parse(self.path, XMLParser(target=ET.TreeBuilder(insert_comments=True), encoding='utf-8'))
+        self.__xml_tree = parse(self.path, XMLParser(target=TB(insert_comments=True), encoding='utf-8'))
 
         for count, item in enumerate(self.__xml_tree.getroot()):
             if item.tag != 'dependencies':
