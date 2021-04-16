@@ -15,7 +15,7 @@
 
 from os import remove
 from shutil import copyfile
-from defusedxml.ElementTree import parse, DefusedXMLParser
+from defusedxml.ElementTree import parse
 import config
 import xml.sax.saxutils as saxutils
 
