@@ -21,7 +21,7 @@ pipeline {
     agent any
     environment {
         registry = 'fireantbot/fireant'
-        registryCredential = 'fireant_dockerhub_id'
+        registryCredential = 'FIREANT_DOCKERHUB_ID'
         dockerImage = ''
     }
     triggers {
