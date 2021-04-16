@@ -110,18 +110,16 @@ class DependencyFile:
         # Write modified xml (non-escaped and missing header)
         self.__xml_tree.write(path, encoding="utf-8", method='xml', xml_declaration=True)
 
-        f = open(path, "r")
-        content = f.readlines()
-        f.close()
+        with open(path, "r") as f:
+            content = f.readlines()
 
         # Insert license and escape symbols
         content.insert(1, XML_LICENSE)
         content = "".join(content)
         content = saxutils.unescape(content)
 
-        f = open(path, "w")
-        f.write(content)
-        f.close()
+        with open(path, "w") as f:
+            f.write(content)
 
     # Save changes back to the original xml file
     # (path is only for debugging/testing purposes)
