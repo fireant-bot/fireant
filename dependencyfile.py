@@ -16,7 +16,7 @@
 from os import remove
 from shutil import copyfile
 from defusedxml.ElementTree import parse, XMLParser
-import xml.etree.ElementTree as ET  # Not using this module in an unsafe way -- skipcq: BAN-B314
+import xml.etree.ElementTree as ET  # Not using this module in an unsafe way -- skipcq: BAN-B405
 import config
 import xml.sax.saxutils as saxutils
 
