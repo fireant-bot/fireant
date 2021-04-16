@@ -17,39 +17,46 @@
 -->
 
 <ivy-module version="1.0" xmlns:maven="http://ant.apache.org/ivy/maven">
-	<info organisation="org.apache.nutch" module="nutch">
-		<license name="Apache 2.0"
-			url="https://www.apache.org/licenses/LICENSE-2.0.txt" />
-		<ivyauthor name="Apache Nutch Team" url="https://nutch.apache.org/" />
-		<description homepage="https://nutch.apache.org/">Nutch is an open source web-search
-			software. It builds on Hadoop, Tika and Solr, adding web-specifics,
-			such as a crawler, a link-graph database etc.
-		</description>
-	</info>
+    <info organisation="org.apache.nutch" module="nutch">
+        <license name="Apache 2.0"
+                 url="https://www.apache.org/licenses/LICENSE-2.0.txt"/>
+        <ivyauthor name="Apache Nutch Team" url="https://nutch.apache.org/"/>
+        <description homepage="https://nutch.apache.org/">Nutch is an open source web-search
+            software. It builds on Hadoop, Tika and Solr, adding web-specifics,
+            such as a crawler, a link-graph database etc.
+        </description>
+    </info>
+    <!-- Test comment 1 -->
 
-	<configurations>
-		<include file="${basedir}/ivy/ivy-configurations.xml" />
-	</configurations>
+    <configurations>
+        <include file="${basedir}/ivy/ivy-configurations.xml"/>
+    </configurations>
 
-	<publications>
-		<!--get the artifact from our module name -->
-		<artifact conf="master" />
-	</publications>
+    <publications>
+        <!--get the artifact from our module name -->
+        <!-- Test comment 2 -->
+        <artifact conf="master"/>
+    </publications>
 
-	<dependencies>
-		<dependency org="org.slf4j" name="slf4j-api" rev="1.7.30" conf="*->master" />
-		<dependency org="org.slf4j" name="slf4j-log4j12" rev="1.7.30" conf="*->master" />
+    <dependencies>
+        <dependency org="org.slf4j" name="slf4j-api" rev="1.7.30" conf="*->master"/>
+        <dependency org="org.slf4j" name="slf4j-log4j12" rev="1.7.30" conf="*->master"/>
+        <!-- Test comment 4 -->
 
-		<dependency org="org.apache.commons" name="commons-lang3" rev="3.11" conf="*->default" />
-		<dependency org="org.apache.commons" name="commons-collections4" rev="4.4" conf="*->master" />
+        <dependency org="org.apache.commons" name="commons-lang3" rev="3.11" conf="*->default"/>
+        <dependency org="org.apache.commons" name="commons-collections4" rev="4.4" conf="*->master"/>
 
-                <!-- Example of duplicate/double dependency -->
-                <dependency org="org.mortbay.jetty" name="jetty" rev="6.1.26" conf="test->default" />
-                <dependency org="org.mortbay.jetty" name="jetty" rev="6.1.26" />
+        <!-- Example of duplicate/double dependency -->
+        <dependency org="org.mortbay.jetty" name="jetty" rev="6.1.26" conf="test->default"/>
+        <dependency org="org.mortbay.jetty" name="jetty" rev="6.1.26"/>
 
-                <dependency org="org.apache.mrunit" name="mrunit" rev="1.1.0" conf="test->default">
-                        <artifact name="mrunit" maven:classifier="hadoop2" />
-                        <exclude org="log4j" module="log4j" />
-                </dependency>
-	</dependencies>
+        <dependency org="org.apache.mrunit" name="mrunit" rev="1.1.0" conf="test->default">
+            <!-- Test comment 5 -->
+            <artifact name="mrunit" maven:classifier="hadoop2"/>
+            <exclude org="log4j" module="log4j"/>
+        </dependency>
+    </dependencies>
+
+    <!-- Test Multi
+    line comment 1 -->
 </ivy-module>
