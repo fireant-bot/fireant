@@ -15,9 +15,8 @@
 
 from os import remove
 from shutil import copyfile
-from defusedxml.ElementTree import parse, XMLParser
+from defusedxml.ElementTree import parse, DefusedXMLParser
 import config
-import xml.etree.ElementTree as ET
 import xml.sax.saxutils as saxutils
 
 
@@ -52,10 +51,7 @@ class DependencyFile:
         self.unsaved_changelog = []
         self.__dependency_list = []
         # Parse xml and preserve original comments
-        self.__xml_tree = parse(path,
-                                   XMLParser(
-                                       target=ET.TreeBuilder(insert_comments=True),
-                                       encoding="utf-8"))
+        self.__xml_tree = parse(path)
 
         for count, item in enumerate(self.__xml_tree.getroot()):
             if item.tag != 'dependencies':
@@ -151,10 +147,7 @@ class DependencyFile:
         self.unsaved_changelog = []
         self.__dependency_list = []
         # Parse xml and preserve original comments
-        self.__xml_tree = parse(self.path,
-                                 XMLParser(
-                                     target=ET.TreeBuilder(insert_comments=True),
-                                     encoding="utf-8"))
+        self.__xml_tree = parse(self.path)
 
         for count, item in enumerate(self.__xml_tree.getroot()):
             if item.tag != 'dependencies':
