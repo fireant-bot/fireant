@@ -21,8 +21,8 @@ from io import StringIO
 import difflib
 from ..dependencyfile import DependencyFile
 
-TEST_PATH = "test.xml"
-TMP_PATH = "test.xml.tmp"
+TEST_PATH = "tests/test.xml"
+TMP_PATH = "tests/test.xml.tmp"
 
 
 # Test Fixtures and Helper Functions
@@ -91,7 +91,7 @@ def test_str(df):
 def test_dependency_list(df):
     """Ensures that the dependency list returned has dependencies from the xml.
     """
-    assert len(df.dependency_list()) == 8
+    assert len(df.dependency_list()) == 7
     for i in df.dependency_list():
         assert type(i) is dict
 
@@ -112,9 +112,9 @@ def test_save(df):
 
     # Save and read the 'unchanged' dependency file
     df.save()
-    with open(TEST_PATH, "r") as f:
-        modified_xml = f.readlines()
     with open(TMP_PATH, "r") as f:
+        modified_xml = f.readlines()
+    with open(TEST_PATH, "r") as f:
         original_xml = f.readlines()
 
     # Generate and print diffs
@@ -125,3 +125,30 @@ def test_save(df):
     for i in d:
         if i[0] in ('+', '-'):
             assert 'dependency' not in i
+
+
+def test_comments(df):
+    """Ensures that various comments throughout the xml are preserved"""
+
+    df.save()
+    with open(TMP_PATH, "r") as f:
+        modified_xml = f.readlines()
+
+    # Check for all numbered comments in the saved xml
+    for i in range(1, 6):
+        found = False
+        for line in modified_xml:
+            if "Test comment " + str(i) in line:
+                found = True
+                break
+        assert found
+
+    # Check for multiline comment
+    found = False
+    for idx, line in enumerate(modified_xml):
+        if "Test Multi" in line:
+            found = True
+            next_line = modified_xml[idx+1]
+            assert "line comment 1" in next_line
+            break
+    assert found

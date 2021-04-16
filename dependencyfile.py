@@ -15,7 +15,8 @@
 
 from os import remove
 from shutil import copyfile
-from defusedxml.ElementTree import parse
+from defusedxml.ElementTree import parse, XMLParser
+import xml.etree.ElementTree as ET  # Not using this module in an unsafe way -- skipcq: BAN-B405
 import config
 import xml.sax.saxutils as saxutils
 
@@ -51,7 +52,7 @@ class DependencyFile:
         self.unsaved_changelog = []
         self.__dependency_list = []
         # Parse xml and preserve original comments
-        self.__xml_tree = parse(path)
+        self.__xml_tree = parse(self.path, XMLParser(target=ET.TreeBuilder(insert_comments=True), encoding='utf-8'))
 
         for count, item in enumerate(self.__xml_tree.getroot()):
             if item.tag != 'dependencies':
@@ -110,18 +111,16 @@ class DependencyFile:
         # Write modified xml (non-escaped and missing header)
         self.__xml_tree.write(path, encoding="utf-8", method='xml', xml_declaration=True)
 
-        f = open(path, "r")
-        content = f.readlines()
-        f.close()
+        with open(path, "r") as f:
+            content = f.readlines()
 
         # Insert license and escape symbols
         content.insert(1, XML_LICENSE)
         content = "".join(content)
         content = saxutils.unescape(content)
 
-        f = open(path, "w")
-        f.write(content)
-        f.close()
+        with open(path, "w") as f:
+            f.write(content)
 
     # Save changes back to the original xml file
     # (path is only for debugging/testing purposes)
@@ -147,7 +146,7 @@ class DependencyFile:
         self.unsaved_changelog = []
         self.__dependency_list = []
         # Parse xml and preserve original comments
-        self.__xml_tree = parse(self.path)
+        self.__xml_tree = parse(self.path, XMLParser(target=ET.TreeBuilder(insert_comments=True), encoding='utf-8'))
 
         for count, item in enumerate(self.__xml_tree.getroot()):
             if item.tag != 'dependencies':
