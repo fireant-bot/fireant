@@ -18,6 +18,8 @@
 
 import glob
 import json
+from shutil import which
+from shutil import Error as ShutilError
 import subprocess
 import threading
 from queue import Queue
@@ -32,20 +34,43 @@ from dependencyfile import DependencyFile
 
 def debug():
     print("Testing python docker image")
-    subprocess.run(['java', '-version'])
-    subprocess.run(['git', 'version'])
-    subprocess.run(['ant', '-version'])
+    try:
+        subprocess.run(['{}'.format(which('java')), '-version'], check=True)
+        subprocess.run(['{}'.format(which('git')), 'version'], check=True)
+        subprocess.run(['{}'.format(which('ant')), '-version'], check=True)
+    except subprocess.CalledProcessError:
+        print("Java, Git, or Ant is not installed.")
+        return False
+    except ShutilError:
+        print("Error reading which ant is being used by system")
+        return False
     print("Testing env variables")
     print('JAVA_HOME:', os.environ['JAVA_HOME'])
     print('ANT_HOME:', os.environ['ANT_HOME'])
-    subprocess.run(['ant'], cwd=config.REPO_PATH)
+    try:
+        subprocess.run(['{}'.format(which('ant'))], cwd=config.REPO_PATH, check=True)
+    except subprocess.CalledProcessError:
+        print("Ant build failed to run")
+        return False
+    except ShutilError:
+        print("Error reading which ant is being used by system")
+        return False
+    return True
 
 
 def setup_env():
     REPO_LINK = config.REPO_LINK
     REPO_PATH = config.REPO_PATH
     if not os.path.isdir(REPO_PATH):
-        subprocess.run(['git', 'clone', REPO_LINK, REPO_PATH])
+        try:
+            subprocess.run(['{}'.format(which('git')), 'clone', REPO_LINK, REPO_PATH], check=True)
+        except subprocess.CalledProcessError:
+            print("Cloning repo {} to {} was not successful".format(REPO_LINK, REPO_PATH))
+            return False
+        except ShutilError:
+            print("Error reading which ant is being used by system")
+            return False
+    return True
 
 
 def newest_dependency_version(org, name):
@@ -235,5 +260,7 @@ def main():
 
 
 if __name__ == '__main__':
-    setup_env()
-    main()
+    if setup_env():
+        main()
+    else:
+        print("Setup was not successful.")
