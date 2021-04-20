@@ -72,21 +72,31 @@ def setup_env():
             return False
     else:
         try:
-            subprocess.run(['{}'.format(which('git')), '-C', REPO_PATH, 'remote', 'add', 'upstream',
-                            config.REMOTE_REPO_LINK], check=True)
+            update_forked_repo()
+            subprocess.run(['{}'.format(which('git')), '-C', REPO_PATH, 'pull'], check=True)
         except subprocess.CalledProcessError:
-            print("Remote upstream already exists")
-        try:
-            subprocess.run(['{}'.format(which('git')), '-C', REPO_PATH, 'fetch', 'upstream'], check=True)
-            subprocess.run(['{}'.format(which('git')), '-C', REPO_PATH, 'checkout', config.MAIN_BRANCH], check=True)
-            subprocess.run(['{}'.format(which('git')), '-C', REPO_PATH, 'merge', 'upstream/master'], check=True)
-        except subprocess.CalledProcessError:
-            print("Merging forked repo with remote upstream failed")
+            print("Pulling repo failed")
             return False
         except ShutilError:
             print("Error reading which git is being used by system")
             return False
     return True
+
+
+def update_forked_repo():
+    remote_org = config.REMOTE_REPO_LINK.split('/')[-2]
+    forked_org = config.FORKED_LINK.split('/')[-2]
+    branch = config.MAIN_BRANCH
+    merge_message = "merge {}:{} with {}:{}".format(forked_org, branch, remote_org, branch)
+    try:
+        pull = get_forked_repo().create_pull(title=merge_message, body=merge_message,
+                                             head='{}:{}'.format(remote_org, branch), base=branch,
+                                             maintainer_can_modify=True)
+        pull.merge(merge_message)
+        return True
+    except GithubException as e:
+        print("Duplicate pull request, repo up-to-date, or merge failed: {}".format(e))
+        return False
 
 
 def newest_dependency_version(org, name):
@@ -137,7 +147,7 @@ def tag_run(dep_queue, new_dep_queue):
         new_dep_queue.put(dep)
 
 
-def get_repo():
+def get_forked_repo():
     repo_name = config.FORKED_LINK.split('/')[-1]
     g = Github(config.GITHUB_USERNAME, config.GITHUB_PASSWORD)
     return g.get_user().get_repo(repo_name)
@@ -151,7 +161,7 @@ def get_remote_repo():
 
 
 def get_open_pull_requests():
-    pulls = get_repo().get_pulls(state='open')
+    pulls = get_forked_repo().get_pulls(state='open')
     pages = int(pulls.totalCount / config.NUM_PULLS_PER_PAGE) + 1
     pull_arr = []
     for page in range(pages):
@@ -248,17 +258,17 @@ def update_run(file_queue, dep_dict, open_pull_requests):
                     config.GITHUB_EMAIL
                 )
                 branch_name = 'fireant_{}_{}'.format(dep['name'], new_version)
-                source = get_repo().get_branch(config.MAIN_BRANCH)
+                source = get_forked_repo().get_branch(config.MAIN_BRANCH)
                 try:
                     print('Submitting pull request: {}'.format(title))
                     # Create branch
-                    get_repo().create_git_ref(ref='refs/heads/{}'.format(branch_name), sha=source.commit.sha)
-                    contents = get_repo().get_contents(git_path, ref=branch_name)
+                    get_forked_repo().create_git_ref(ref='refs/heads/{}'.format(branch_name), sha=source.commit.sha)
+                    contents = get_forked_repo().get_contents(git_path, ref=branch_name)
                     with open(file_path, 'r') as xml_file:
                         file_content = ''.join(xml_file.readlines())
                     # Commit and push update to new branch
-                    get_repo().update_file(contents.path, title, file_content, contents.sha, branch=branch_name,
-                                           author=author)
+                    get_forked_repo().update_file(contents.path, title, file_content, contents.sha, branch=branch_name,
+                                                  author=author)
                     submit_upgrade_pull_request(dep['name'], git_path, new_version, branch_name, len(remove) > 0)
                 except GithubException as e:
                     print(e)
