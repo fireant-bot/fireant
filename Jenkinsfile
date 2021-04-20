@@ -69,5 +69,15 @@ pipeline {
                 }
             }
         }*/
+        stage('Slack') {
+            steps {
+                slackSend baseUrl: 'https://hooks.slack.com/services/',
+                channel: '#jenkins',
+                color: 'good',
+                message: 'Jenkins Pipline executed successfully!',
+                teamDomain: 'apachenutch401',
+                tokenCredentialId: 'SLACK_TOKEN'
+            }
+        }
     }
 }
