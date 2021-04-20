@@ -87,7 +87,7 @@ def update_forked_repo():
     remote_org = config.REMOTE_REPO_LINK.split('/')[-2]
     forked_org = config.FORKED_LINK.split('/')[-2]
     branch = config.MAIN_BRANCH
-    merge_message = "merge {}:{} with {}:{}".format(forked_org, branch, remote_org, branch)
+    merge_message = "merge {0}:{2} with {1}:{2}".format(forked_org,remote_org, branch)
     try:
         pull = get_forked_repo().create_pull(title=merge_message, body=merge_message,
                                              head='{}:{}'.format(remote_org, branch), base=branch,
