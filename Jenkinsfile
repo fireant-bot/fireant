@@ -76,7 +76,7 @@ pipeline {
                 color: 'good',
                 message: 'Jenkins Pipline executed successfully!',
                 teamDomain: 'apachenutch401',
-                tokenCredentialId: 'SLACK_TOKEN'
+                tokenCredentialId: 'FIREANT_SLACK_TOKEN'
             }
         }
     }
