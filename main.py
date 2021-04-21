@@ -42,7 +42,7 @@ def debug():
         print("Java, Git, or Ant is not installed.")
         return False
     except ShutilError:
-        print("Error reading which ant is being used by system")
+        print("Error reading which ant, git, or java is being used by system")
         return False
     print("Testing env variables")
     print('JAVA_HOME:', os.environ['JAVA_HOME'])
@@ -59,7 +59,7 @@ def debug():
 
 
 def setup_env():
-    REPO_LINK = config.REPO_LINK
+    REPO_LINK = config.FORKED_LINK
     REPO_PATH = config.REPO_PATH
     if not os.path.isdir(REPO_PATH):
         try:
@@ -68,9 +68,35 @@ def setup_env():
             print("Cloning repo {} to {} was not successful".format(REPO_LINK, REPO_PATH))
             return False
         except ShutilError:
-            print("Error reading which ant is being used by system")
+            print("Error reading which git is being used by system")
+            return False
+    else:
+        try:
+            update_forked_repo()
+            subprocess.run(['{}'.format(which('git')), '-C', REPO_PATH, 'pull'], check=True)
+        except subprocess.CalledProcessError:
+            print("Pulling repo failed")
+            return False
+        except ShutilError:
+            print("Error reading which git is being used by system")
             return False
     return True
+
+
+def update_forked_repo():
+    remote_org = config.REMOTE_REPO_LINK.split('/')[-2]
+    forked_org = config.FORKED_LINK.split('/')[-2]
+    branch = config.MAIN_BRANCH
+    merge_message = "merge {0}:{2} with {1}:{2}".format(forked_org,remote_org, branch)
+    try:
+        pull = get_forked_repo().create_pull(title=merge_message, body=merge_message,
+                                             head='{}:{}'.format(remote_org, branch), base=branch,
+                                             maintainer_can_modify=True)
+        pull.merge(merge_message)
+        return True
+    except GithubException as e:
+        print("Duplicate pull request, repo up-to-date, or merge failed: {}".format(e))
+        return False
 
 
 def newest_dependency_version(org, name):
@@ -121,14 +147,21 @@ def tag_run(dep_queue, new_dep_queue):
         new_dep_queue.put(dep)
 
 
-def get_repo():
-    repo_name = config.REPO_LINK.split('/')[-1]
+def get_forked_repo():
+    repo_name = config.FORKED_LINK.split('/')[-1]
     g = Github(config.GITHUB_USERNAME, config.GITHUB_PASSWORD)
     return g.get_user().get_repo(repo_name)
 
 
+def get_remote_repo():
+    repo_name = config.REMOTE_REPO_LINK.split('/')[-1]
+    org = config.REMOTE_REPO_LINK.split('/')[-2]
+    g = Github(config.GITHUB_USERNAME, config.GITHUB_PASSWORD)
+    return g.get_repo('{}/{}'.format(org, repo_name))
+
+
 def get_open_pull_requests():
-    pulls = get_repo().get_pulls(state='open')
+    pulls = get_forked_repo().get_pulls(state='open')
     pages = int(pulls.totalCount / config.NUM_PULLS_PER_PAGE) + 1
     pull_arr = []
     for page in range(pages):
@@ -141,9 +174,11 @@ def get_open_pull_requests():
 
 def submit_upgrade_pull_request(name, path, new_version, branch, duplicate=False):
     title = config.PULL_REQUEST_FORMAT.format(name, path, new_version)
+    org = config.FORKED_LINK.split('/')[-2]
     if duplicate:
         title += config.DUPLICATE_MESSAGE
-    pr = get_repo().create_pull(title=title, body=title, head=branch, base=config.MAIN_BRANCH)
+    pr = get_remote_repo().create_pull(title=title, body=title, head='{}:{}'.format(org, branch),
+                                       base=config.MAIN_BRANCH)
     print('Created pull request: {}'.format(pr))
 
 
@@ -214,24 +249,26 @@ def update_run(file_queue, dep_dict, open_pull_requests):
             new_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['new_version']
             df.modify_version(i, new_version)
             df.save()
-            title = config.PULL_REQUEST_FORMAT.format(dep['name'], file_path, new_version)
+            strip_from = len(config.REPO_PATH.replace('/', '') + '/')
+            git_path = file_path[strip_from:]
+            title = config.PULL_REQUEST_FORMAT.format(dep['name'], git_path, new_version)
             if title not in open_pull_requests:
                 author = InputGitAuthor(
                     config.GITHUB_USERNAME,
                     config.GITHUB_EMAIL
                 )
                 branch_name = 'fireant_{}_{}'.format(dep['name'], new_version)
-                source = get_repo().get_branch(config.MAIN_BRANCH)
+                source = get_forked_repo().get_branch(config.MAIN_BRANCH)
                 try:
                     print('Submitting pull request: {}'.format(title))
-                    get_repo().create_git_ref(ref='refs/heads/{}'.format(branch_name), sha=source.commit.sha)
-                    strip_from = len(config.REPO_PATH.replace('/', '') + '/')
-                    git_path = file_path[strip_from:]
-                    contents = get_repo().get_contents(git_path, ref=branch_name)
+                    # Create branch
+                    get_forked_repo().create_git_ref(ref='refs/heads/{}'.format(branch_name), sha=source.commit.sha)
+                    contents = get_forked_repo().get_contents(git_path, ref=branch_name)
                     with open(file_path, 'r') as xml_file:
                         file_content = ''.join(xml_file.readlines())
-                        get_repo().update_file(contents.path, title, file_content, contents.sha, branch=branch_name,
-                                               author=author)  # Commit and push update
+                    # Commit and push update to new branch
+                    get_forked_repo().update_file(contents.path, title, file_content, contents.sha, branch=branch_name,
+                                                  author=author)
                     submit_upgrade_pull_request(dep['name'], git_path, new_version, branch_name, len(remove) > 0)
                 except GithubException as e:
                     print(e)
