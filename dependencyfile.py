@@ -40,13 +40,22 @@ XML_LICENSE = """\n<!-- Licensed to the Apache Software Foundation (ASF) under o
 
 class DependencyFile:
     def __str__(self):
+        """
+        Returns a string with all dependencies in the xml.
+
+        :return: string containing dependency information
+        """
         res = []
         for item in self.__xml_tree.getroot().iter('dependency'):
             res.append(str(item.attrib) + '\n')
         return "".join(res)
 
-    # Initialize class with a given filepath
     def __init__(self, path):
+        """
+        Construct a new DependencyFile object for a given ivy.xml file.
+
+        :param path: filepath to ivy.xml to be modified
+        """
         self.path = path
         self.saved_changelog = []
         self.unsaved_changelog = []
@@ -54,6 +63,7 @@ class DependencyFile:
         # Parse xml and preserve original comments
         self.__xml_tree = parse(self.path, XMLParser(target=ET.TreeBuilder(insert_comments=True), encoding='utf-8'))
 
+        # Iterate through all dependencies and place their information into a list
         for count, item in enumerate(self.__xml_tree.getroot()):
             if item.tag != 'dependencies':
                 continue
@@ -61,11 +71,19 @@ class DependencyFile:
 
             for dependency in item:
                 self.__dependency_list.append(dependency.attrib)
+
+        # Temporarily backup the original ivy.xml while this DependencyFile is being used/modified
         self.__backup = '{}/{}.bak'.format(config.TMP_DIRECTORY, hash(path))
         self.__save_backup()
 
-    # Print log of all saved/unsaved changes
     def print_log(self):
+        """
+        Prints all modifications made to the DependencyFile.
+        Unsaved changes have not been written back to the ivy.xml,
+        while saved changes have.
+
+        :return:
+        """
         print("Changelog for dependency file:", self.path)
         if not self.saved_changelog and not self.unsaved_changelog:
             print("No logged changes")
@@ -78,14 +96,25 @@ class DependencyFile:
             for i in self.unsaved_changelog:
                 print(i)
 
-    # Return a list of all dependencies
     def dependency_list(self) -> list:
+        """
+        Returns a list of all dependencies found in the ivy.xml.
+        The indexes of each dependency in this list are used for
+        removing and updating their versions.
+
+        :return: list of dicts with information for each dependency
+        """
         return self.__dependency_list.copy()
 
-    # Modify the 'rev' tag of a dependency
-    # Accepts index of the dependency (from the list)
-    # and the new version number
     def modify_version(self, index: int, version: str):
+        """
+        Modifies the version of a single dependency in the ivy.xml.
+        This directly modifies the 'rev' tag in the xml.
+
+        :param index: index of dependency to modify (from dependency_list)
+        :param version: new version for updated dependency
+        :return:
+        """
         xml_dependency = self.__xml_tree.getroot()[self.__dependencies_index][index]
         name = xml_dependency.attrib['name']
         old_version = xml_dependency.attrib['rev']
@@ -97,8 +126,13 @@ class DependencyFile:
         log_msg = "Update " + name + " " + old_version + " -> " + version
         self.unsaved_changelog.append(log_msg)
 
-    # Removes a dependency
     def remove(self, index: int):
+        """
+        Removes a dependency from the ivy.xml.
+
+        :param index: index of dependency to remove from the ivy.xml
+        :return:
+        """
         xml_dependency = self.__xml_tree.getroot()[self.__dependencies_index]
         name = xml_dependency[index].attrib['name']
         old_version = xml_dependency[index].attrib['rev']
@@ -108,6 +142,15 @@ class DependencyFile:
         self.unsaved_changelog.append(log_msg)
 
     def __write(self, path):
+        """
+        Internal function for writing the contents of
+        this DependencyFile (including modifications)
+        to the given filepath. Also inserts Apache
+        License and escapes symbols.
+
+        :param path: filepath where modified xml will be written
+        :return:
+        """
         # Write modified xml (non-escaped and missing header)
         self.__xml_tree.write(path, encoding="utf-8", method='xml', xml_declaration=True)
 
@@ -122,9 +165,16 @@ class DependencyFile:
         with open(path, "w") as f:
             f.write(content)
 
-    # Save changes back to the original xml file
-    # (path is only for debugging/testing purposes)
     def save(self, path=None):
+        """
+        Save and write all changes back to the originally
+        provided ivy.xml (or to a specific filepath).
+        All unsaved changes will now be shown as saved
+        when the log is printed.
+
+        :param path: filepath where xml will be written (optional)
+        :return:
+        """
         if path:
             self.__write(path)
         else:
@@ -135,12 +185,29 @@ class DependencyFile:
         self.unsaved_changelog = []
 
     def __save_backup(self):
+        """
+        Copy original ivy.xml to backup path.
+
+        :return:
+        """
         copyfile(self.path, self.__backup)
 
     def close(self):
+        """
+        Call when finished using this DependencyFile.
+        Deletes the temporary backup.
+
+        :return:
+        """
         remove(self.__backup)
 
     def revert_copy(self):
+        """
+        Reset DependencyFile to its original state
+        from the backup (before modifications).
+
+        :return:
+        """
         copyfile(self.__backup, self.path)
         self.saved_changelog = []
         self.unsaved_changelog = []
