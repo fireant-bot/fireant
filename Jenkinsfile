@@ -65,7 +65,10 @@ pipeline {
         stage('Run') {
             steps {
                 script {
-                    dockerImage.run("-p 8096:5000 --rm --name fireant")
+                    dockerImage.run("""-p 8096:5000 --rm --name fireant --build-arg GITHUB_USERNAME=${GITHUB_USERNAME}
+                                    |--build-arg GITHUB_PASSWORD=${GITHUB_PASSWORD}
+                                    |--build-arg GITHUB_EMAIL=${GITHUB_EMAIL}
+                                    |--build-arg REQUIRES_IO_TOKEN=${REQUIRES_IO_TOKEN}""".stripMargin())
                 }
             }
         }*/
