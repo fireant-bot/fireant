@@ -44,4 +44,3 @@ try:
 except KeyError as e:
     print(e)
     print("Could not get environment variables for GitHub settings or Requires.io")
-    exit(1)
