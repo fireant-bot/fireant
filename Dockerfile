@@ -25,7 +25,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Install packages
 RUN apt-get update \
- && apt-get -y --no-install-recommends install ant="1.10.5-2" openjdk-11-jdk="11.0.9.1+1-1~deb10u2" git="1:2.20.1-2+deb10u3" \
+ && apt-get -y --no-install-recommends install ant="1.10.5-2" openjdk-11-jdk="11.0.9.1+1-1~deb10u2" openjdk-11-jre="11.0.9.1+1-1~deb10u2"  openjdk-11-jre-headless="11.0.9.1+1-1~deb10u2" openjdk-11-jdk-headless="11.0.9.1+1-1~deb10u2" git="1:2.20.1-2+deb10u3" \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
