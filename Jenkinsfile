@@ -55,29 +55,23 @@ pipeline {
                 }
             }
         }
-     /*
-        stage('Stop') {
-            steps {
-                sh 'docker ps -f name=fireant -q | xargs --no-run-if-empty docker container stop'
-                sh 'docker container ls -a -fname=fireant -q | xargs -r docker container rm'
-            }
-        }
-        stage('Run') {
-            steps {
-                script {
-                    dockerImage.run("-p 8096:5000 --rm --name fireant")
-                }
-            }
-        }*/
-        stage('Slack') {
-            steps {
-                slackSend baseUrl: 'https://hooks.slack.com/services/',
+    }
+    post {
+        success {
+            slackSend baseUrl: 'https://hooks.slack.com/services/',
                 channel: '#jenkins',
                 color: 'good',
-                message: 'Jenkins Pipline executed successfully!',
+                message: 'Jenkins Pipeline - ' + BUILD_NUMBER + ' - Success',
                 teamDomain: 'apachenutch401',
-                tokenCredentialId: 'FIREANT_SLACK_TOKEN'
-            }
+                tokenCredentialId: 'SLACK_TOKEN'
+        }
+        failure {
+             slackSend baseUrl: 'https://hooks.slack.com/services/',
+                channel: '#jenkins',
+                color: '#FF0000',
+                message: 'Jenkins Pipeline - ' + BUILD_NUMBER + ' - Failure',
+                teamDomain: 'apachenutch401',
+                tokenCredentialId: 'SLACK_TOKEN'
         }
     }
 }
