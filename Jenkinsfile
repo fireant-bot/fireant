@@ -57,7 +57,7 @@ pipeline {
         }
         stage('Run') {
             steps {
-                sh 'docker run -e GITHUB_USERNAME=\'fireantci\' -e GITHUB_PASSWORD=\'\' -e GITHUB_EMAIL=\'fireantbot@gmail.com\' -e REQUIRES_IO_TOKEN=\'\' fireantbot/fireant'
+                sh 'docker run -e GITHUB_USERNAME=\'\' -e GITHUB_PASSWORD=\'\' -e GITHUB_EMAIL=\'\' -e REQUIRES_IO_TOKEN=\'\' fireantbot/fireant'
             }
         }
     }
