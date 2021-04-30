@@ -28,8 +28,11 @@ TMP_PATH = "tests/test.xml.tmp"
 # Test Fixtures and Helper Functions
 @pytest.fixture
 def xml_filepath():
-    """Provides a filepath to a ivy.xml file for testing.
+    """
+    Provides a filepath to a ivy.xml file for testing.
     This file is deleted after a test calling for this fixture terminates.
+
+    :return: Path to a copy of the ivy.xml located at TEST_PATH
     """
 
     # Create the xml and pass the path to user
@@ -42,15 +45,22 @@ def xml_filepath():
 
 @pytest.fixture
 def df(xml_filepath):
-    """Returns an unchanged DependencyFile object for testing.
+    """
+    Returns an unchanged DependencyFile object for testing.
     This DependencyFile object uses the xml from xml_filepath.
+
+    :param xml_filepath: Copy of ivy.xml from xml_filepath()
+    :return: DependencyFile object for passed in ivy.xml
     """
     return DependencyFile(xml_filepath)
 
 
 def begin_capture():
-    """Begins redirecting console output into a StringIO object.
+    """
+    Begins redirecting console output into a StringIO object.
     Useful for testing functions that print but don't return.
+
+    :return: StringIO object tied to stdout (passed into retrieve_capture())
     """
     s = StringIO()
     sys.stdout = s
@@ -58,6 +68,13 @@ def begin_capture():
 
 
 def retrieve_capture(s):
+    """
+    Stops redirecting stdout to the passed in StringIO object.
+
+    :param s: StringIO object from begin_capture()
+    :return: String containing all captured output since begin_capture() was called
+    """
+
     sys.stdout = sys.__stdout__
     output = s.getvalue()
     s.close()
@@ -66,8 +83,12 @@ def retrieve_capture(s):
 
 # Begin Tests
 def test_init(df):
-    """Ensures that DependencyFile initializes correctly.
+    """
+    Ensures that DependencyFile initializes correctly.
     Checks member variables and ensures there are no crashes.
+
+    :param df: DependencyFile object initialized with the ivy.xml at TEST_PATH
+    :return:
     """
     assert df.path == TMP_PATH
     assert len(df.saved_changelog) == 0
@@ -75,8 +96,12 @@ def test_init(df):
 
 
 def test_str(df):
-    """Ensures that DependencyFile returns a string when printed.
+    """
+    Ensures that DependencyFile returns a string when printed.
     This string must contain info about dependencies in the file.
+
+    :param df: DependencyFile object initialized with the ivy.xml at TEST_PATH
+    :return:
     """
     s = DependencyFile.__str__(df)
     assert s != ""
@@ -89,7 +114,11 @@ def test_str(df):
 
 
 def test_dependency_list(df):
-    """Ensures that the dependency list returned has dependencies from the xml.
+    """
+    Ensures that the dependency list returned has dependencies from the xml.
+
+    :param df: DependencyFile object initialized with the ivy.xml at TEST_PATH
+    :return:
     """
     assert len(df.dependency_list()) == 7
     for i in df.dependency_list():
@@ -106,8 +135,12 @@ def test_dependency_list(df):
 
 
 def test_save(df):
-    """Test saving without any changes to dependencies.
+    """
+    Test saving without any changes to dependencies.
     No changes expected aside from minor differences in whitespace.
+
+    :param df: DependencyFile object initialized with the ivy.xml at TEST_PATH
+    :return:
     """
 
     # Save and read the 'unchanged' dependency file
@@ -128,7 +161,12 @@ def test_save(df):
 
 
 def test_comments(df):
-    """Ensures that various comments throughout the xml are preserved"""
+    """
+    Ensures that various comments throughout the xml are preserved
+
+    :param df: DependencyFile object initialized with the ivy.xml at TEST_PATH
+    :return:
+    """
 
     df.save()
     with open(TMP_PATH, "r") as f:
