@@ -55,29 +55,30 @@ pipeline {
                 }
             }
         }
-     /*
-        stage('Stop') {
-            steps {
-                sh 'docker ps -f name=fireant -q | xargs --no-run-if-empty docker container stop'
-                sh 'docker container ls -a -fname=fireant -q | xargs -r docker container rm'
-            }
-        }
         stage('Run') {
             steps {
-                script {
-                    dockerImage.run("-p 8096:5000 --rm --name fireant")
+                withCredentials([string(credentialsId: 'GITHUB_EMAIL', variable: 'GITHUB_EMAIL'), string(credentialsId: 'GITHUB_PASSWORD', variable: 'GITHUB_PASSWORD'), string(credentialsId: 'GITHUB_USERNAME', variable: 'GITHUB_USERNAME'), string(credentialsId: 'REQUIRES_IO_TOKEN', variable: 'REQUIRES_IO_TOKEN')]) {
+                     sh 'docker run -e GITHUB_USERNAME=$GITHUB_USERNAME -e GITHUB_PASSWORD=$GITHUB_PASSWORD -e GITHUB_EMAIL=$GITHUB_EMAIL -e REQUIRES_IO_TOKEN=$REQUIRES_IO_TOKEN fireantbot/fireant'
                 }
             }
-        }*/
-        stage('Slack') {
-            steps {
-                slackSend baseUrl: 'https://hooks.slack.com/services/',
+        }
+    }
+    post {
+        success {
+            slackSend baseUrl: 'https://hooks.slack.com/services/',
                 channel: '#jenkins',
                 color: 'good',
-                message: 'Jenkins Pipline executed successfully!',
+                message: 'Jenkins Pipeline - ' + BUILD_NUMBER + ' - Success',
                 teamDomain: 'apachenutch401',
-                tokenCredentialId: 'FIREANT_SLACK_TOKEN'
-            }
+                tokenCredentialId: 'SLACK_TOKEN'
+        }
+        failure {
+             slackSend baseUrl: 'https://hooks.slack.com/services/',
+                channel: '#jenkins',
+                color: '#FF0000',
+                message: 'Jenkins Pipeline - ' + BUILD_NUMBER + ' - Failure',
+                teamDomain: 'apachenutch401',
+                tokenCredentialId: 'SLACK_TOKEN'
         }
     }
 }
