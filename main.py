@@ -25,14 +25,17 @@ import threading
 from queue import Queue
 import os
 
-from github import Github, InputGitAuthor, GithubException
+from github import Github, InputGitAuthor, GithubException, Repository
 import urllib3
 
 import config
 from dependencyfile import DependencyFile
 
 
-def debug():
+def debug() -> bool:
+    """
+    :return: boolean indicating whether or not system has necessary software installed and set up
+    """
     print("Testing python docker image")
     try:
         subprocess.run(['{}'.format(which('java')), '-version'], check=True)
@@ -58,7 +61,12 @@ def debug():
     return True
 
 
-def setup_env():
+def setup_env() -> bool:
+    """
+    Attempts to synchronize the local, forked, and remote repositories
+
+    :return: boolean indicating whether or not forked repo is up to date with the remote repo
+    """
     REPO_LINK = config.FORKED_LINK
     REPO_PATH = config.REPO_PATH
     if not os.path.isdir(REPO_PATH):
@@ -83,7 +91,12 @@ def setup_env():
     return True
 
 
-def update_forked_repo():
+def update_forked_repo() -> bool:
+    """
+    Attempts to merge the forked repository with the upstream remote repository
+
+    :return: boolean indicating whether or not the forked repository has been merged with the remote repository
+    """
     remote_org = config.REMOTE_REPO_LINK.split('/')[-2]
     forked_org = config.FORKED_LINK.split('/')[-2]
     branch = config.MAIN_BRANCH
@@ -99,7 +112,14 @@ def update_forked_repo():
         return False
 
 
-def newest_dependency_version(org, name):
+def newest_dependency_version(org: str, name: str) -> str:
+    """
+    Pulls and returns the latest stable version of the dependency specified by the parameters
+
+    :param org: the name of the organization that created the dependency (i.e., "org.apache.commons")
+    :param name: the name of the dependency itself, used in Maven (i.e., "commons-lang3")
+    :return: string representing the latest stable version of the dependency inputted (i.e., "3.11")
+    """
     http = urllib3.PoolManager()
     resp = http.request('GET', config.MAVEN_SEARCH_URL.format(org, name))
     if resp.status != 200:
@@ -113,7 +133,14 @@ def newest_dependency_version(org, name):
     return version
 
 
-def tag_new_dep_version(dependencies):
+def tag_new_dep_version(dependencies: []) -> Queue:
+    """
+    Tags all inputted dependencies with an additional attribute specifying their latest stable version
+
+    :param dependencies: a list of dependencies (a dict of attributes that specify a dependency)
+    :return: queue.Queue object containing all inputted dependencies with an additional attribute tag ('new_version')
+            that specifies the latest version of the dependency
+    """
     dep_queue = Queue(config.MAXIMUM_DEPENDENCIES)
     new_dep_queue = Queue(config.MAXIMUM_DEPENDENCIES)
     for dep in dependencies:
@@ -131,7 +158,14 @@ def tag_new_dep_version(dependencies):
     return new_dep_queue
 
 
-def tag_run(dep_queue, new_dep_queue):
+def tag_run(dep_queue: Queue, new_dep_queue: Queue):
+    """
+    Loops through all dependencies in the inputted queue, tags them with their latest stable version, and puts them
+    in the other inputted queue.
+
+    :param dep_queue: a queue with a number of dependencies in it
+    :param new_dep_queue: an empty queue that will be filled with the original dependencies and an additional tag
+    """
     while not dep_queue.empty():
         dep = dep_queue.get()
         new_version = None
@@ -147,20 +181,29 @@ def tag_run(dep_queue, new_dep_queue):
         new_dep_queue.put(dep)
 
 
-def get_forked_repo():
+def get_forked_repo() -> Repository:
+    """
+    :return: a github.Repository object allowing interaction with the forked repository
+    """
     repo_name = config.FORKED_LINK.split('/')[-1]
     g = Github(config.GITHUB_USERNAME, config.GITHUB_PASSWORD)
     return g.get_user().get_repo(repo_name)
 
 
-def get_remote_repo():
+def get_remote_repo() -> Repository:
+    """
+    :return: a github.Repository object allowing interaction with the remote repository
+    """
     repo_name = config.REMOTE_REPO_LINK.split('/')[-1]
     org = config.REMOTE_REPO_LINK.split('/')[-2]
     g = Github(config.GITHUB_USERNAME, config.GITHUB_PASSWORD)
     return g.get_repo('{}/{}'.format(org, repo_name))
 
 
-def get_open_pull_requests():
+def get_open_pull_requests() -> dict:
+    """
+    :return: a dictionary (set) of titles of all open pull requests in the forked repository
+    """
     pulls = get_forked_repo().get_pulls(state='open')
     pages = int(pulls.totalCount / config.NUM_PULLS_PER_PAGE) + 1
     pull_arr = []
@@ -172,7 +215,16 @@ def get_open_pull_requests():
     return pull_title_dict
 
 
-def submit_upgrade_pull_request(name, path, new_version, branch, duplicate=False):
+def submit_upgrade_pull_request(name: str, path: str, new_version: str, branch: str, duplicate: bool = False):
+    """
+    Attempts to submit a pull request to the remote repository using a branch from the forked repository
+
+    :param name: the name of the dependency being changed by the commit
+    :param path: the git path of the file being changed by the commit
+    :param new_version: the string representation of the new version of the dependency being changed
+    :param branch: the name of the branch in the forked repository used for the pull request
+    :param duplicate: indicates whether or not there were duplicate dependencies deleted in the commit
+    """
     title = config.PULL_REQUEST_FORMAT.format(name, path, new_version)
     org = config.FORKED_LINK.split('/')[-2]
     if duplicate:
@@ -182,7 +234,10 @@ def submit_upgrade_pull_request(name, path, new_version, branch, duplicate=False
     print('Created pull request: {}'.format(pr))
 
 
-def get_dependencies():
+def get_dependencies() -> []:
+    """
+    :return: returns a list of all dependencies used in the repository via all files called ivy.xml
+    """
     dependencies = []
     for dep_file in glob.glob('{}/**/ivy.xml'.format(config.REPO_PATH.replace('/', '')), recursive=True):
         df = DependencyFile(dep_file)
@@ -191,7 +246,13 @@ def get_dependencies():
     return dependencies
 
 
-def find_updated_dependency_versions(dependencies):
+def find_updated_dependency_versions(dependencies: []) -> dict:
+    """
+    Maps dependency identifiers to the the dependency tagged with the new version and filters up-to-date dependencies
+
+    :param dependencies: a list of dependencies (a dictionary of attributes of the dependency)
+    :return: a dictionary mapping dependency identifiers with the associated dependency with an additional version tag
+    """
     dep_dict = {}
     dep_queue = tag_new_dep_version(dependencies)
     while not dep_queue.empty():
@@ -202,13 +263,25 @@ def find_updated_dependency_versions(dependencies):
     return dep_dict
 
 
-def is_dependency_valid(dep, dep_dict):
+def is_dependency_valid(dep: dict, dep_dict: dict) -> bool:
+    """
+    :param dep: a dependency that may or may not be valid or up-to-date
+    :param dep_dict: a dictionary mapping dependency identifiers to their up-to-date dependency counterparts
+    :return: a boolean indicating whether the dependency is out-of-date or not
+    """
     if not dep or 'org' not in dep or 'name' not in dep or '{}-{}'.format(dep['org'], dep['name']) not in dep_dict:
         return False
     return True
 
 
-def update_dependencies(dep_dict, open_pull_requests):
+def update_dependencies(dep_dict: dict, open_pull_requests: dict):
+    """
+     Attempts to create upgrade all outdated dependencies in the repository and submit pull requests containing updates
+    to the dependencies to the upstream remote repository
+
+    :param dep_dict: a dictionary mapping dependency identifiers to their up-to-date dependency counterparts
+    :param open_pull_requests: a dictionary (set) of all open pull request titles in the forked repository
+    """
     file_queue = Queue(config.MAXIMUM_DEPENDENCIES)
     for dep_file in glob.glob('{}/**/ivy.xml'.format(config.REPO_PATH.replace('/', '')), recursive=True):
         file_queue.put(dep_file)
@@ -225,7 +298,15 @@ def update_dependencies(dep_dict, open_pull_requests):
         t.join()
 
 
-def update_run(file_queue, dep_dict, open_pull_requests):
+def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
+    """
+    Loops through all ivy.xml files in the repository and attempts to update all outdated dependencies in the file and
+    submit pull requests containing updates to the dependencies to the upstream remote repository
+
+    :param file_queue: a queue containing all ivy.xml files in the repository
+    :param dep_dict:a dictionary mapping dependency identifiers to their up-to-date dependency counterparts
+    :param open_pull_requests: a dictionary (set) of all open pull request titles in the forked repository
+    """
     while not file_queue.empty():
         file_path = file_queue.get()
         df = DependencyFile(file_path)
