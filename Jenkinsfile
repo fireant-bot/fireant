@@ -57,8 +57,10 @@ pipeline {
         }
         stage('Run') {
             steps {
-                withCredentials([string(credentialsId: 'GITHUB_EMAIL', variable: 'GITHUB_EMAIL'), string(credentialsId: 'GITHUB_PASSWORD', variable: 'GITHUB_PASSWORD'), string(credentialsId: 'GITHUB_USERNAME', variable: 'GITHUB_USERNAME'), string(credentialsId: 'REQUIRES_IO_TOKEN', variable: 'REQUIRES_IO_TOKEN')]) {
-                     sh 'docker run --build-arg GITHUB_USERNAME=$GITHUB_USERNAME --build-arg GITHUB_PASSWORD=$GITHUB_PASSWORD --build-arg GITHUB_EMAIL=$GITHUB_EMAIL --build-arg REQUIRES_IO_TOKEN=$REQUIRES_IO_TOKEN fireantbot/fireant'
+                script {
+                    withCredentials([string(credentialsId: 'GITHUB_EMAIL', variable: 'GITHUB_EMAIL'), string(credentialsId: 'GITHUB_PASSWORD', variable: 'GITHUB_PASSWORD'), string(credentialsId: 'GITHUB_USERNAME', variable: 'GITHUB_USERNAME'), string(credentialsId: 'REQUIRES_IO_TOKEN', variable: 'REQUIRES_IO_TOKEN')]) {
+                         sh 'docker run --build-arg GITHUB_USERNAME=$GITHUB_USERNAME --build-arg GITHUB_PASSWORD=$GITHUB_PASSWORD --build-arg GITHUB_EMAIL=$GITHUB_EMAIL --build-arg REQUIRES_IO_TOKEN=$REQUIRES_IO_TOKEN fireantbot/fireant'
+                    }
                 }
             }
         }
