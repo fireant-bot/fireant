@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 # Fireant settings
 NETWORKING_THREADS_MAVEN = 8
 NETWORKING_THREADS_GITHUB = 1
@@ -20,7 +22,8 @@ MAXIMUM_DEPENDENCIES = 1000
 TMP_DIRECTORY = "/tmp"
 
 # GitHub settings
-REPO_LINK = "https://github.com/fireant-ci/nutch"
+REMOTE_REPO_LINK = "https://github.com/apache/nutch"
+FORKED_LINK = "https://github.com/fireant-ci/nutch"
 REPO_PATH = ".repo"
 PLUGINS_FOLDER = "/src/plugin"
 NUM_PULLS_PER_PAGE = 25
@@ -32,8 +35,12 @@ MAIN_BRANCH = "master"
 MAVEN_SEARCH_URL = "https://search.maven.org/solrsearch/select?q=g:{}%20AND%20a:{}&core=gav&start=0&rows=20"
 HTTP_RETRY_ATTEMPTS = 3
 
-# Sensitive settings !!! DO NOT PUSH !!!
-GITHUB_USERNAME = "X"
-GITHUB_PASSWORD = "X"
-GITHUB_EMAIL = "X"
-REQUIRES_IO_TOKEN = "X"
+# Sensitive settings for GitHub
+try:
+    GITHUB_USERNAME = os.environ['GITHUB_USERNAME']
+    GITHUB_PASSWORD = os.environ['GITHUB_PASSWORD']
+    GITHUB_EMAIL = os.environ['GITHUB_EMAIL']
+    REQUIRES_IO_TOKEN = os.environ['REQUIRES_IO_TOKEN']
+except KeyError as e:
+    print(e)
+    print("Could not get environment variables for GitHub settings or Requires.io")
