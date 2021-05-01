@@ -215,17 +215,19 @@ def get_open_pull_requests() -> dict:
     return pull_title_dict
 
 
-def submit_upgrade_pull_request(name: str, path: str, new_version: str, branch: str, duplicate: bool = False):
+def submit_upgrade_pull_request(name: str, path: str, new_version: str, old_version: str, branch: str,
+                                duplicate: bool = False):
     """
     Attempts to submit a pull request to the remote repository using a branch from the forked repository
 
     :param name: the name of the dependency being changed by the commit
     :param path: the git path of the file being changed by the commit
+    :param old_version: the string representation of the old/previous version of the dependency being changed
     :param new_version: the string representation of the new version of the dependency being changed
     :param branch: the name of the branch in the forked repository used for the pull request
     :param duplicate: indicates whether or not there were duplicate dependencies deleted in the commit
     """
-    title = config.PULL_REQUEST_FORMAT.format(name, path, new_version)
+    title = config.PULL_REQUEST_FORMAT.format(name, path, old_version, new_version)
     org = config.FORKED_LINK.split('/')[-2]
     if duplicate:
         title += config.DUPLICATE_MESSAGE
@@ -328,11 +330,12 @@ def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
                 df.remove(dupe_dep_num-j+i+1)
             deps.update({'{}-{}'.format(dep['org'], dep['name']): 1})
             new_version = dep_dict.get('{}-{}'.format(dep['org'], dep['name']))['new_version']
+            old_version = dep['rev']
             df.modify_version(i, new_version)
             df.save()
             strip_from = len(config.REPO_PATH.replace('/', '') + '/')
             git_path = file_path[strip_from:]
-            title = config.PULL_REQUEST_FORMAT.format(dep['name'], git_path, new_version)
+            title = config.PULL_REQUEST_FORMAT.format(dep['name'], git_path, old_version, new_version)
             if title not in open_pull_requests:
                 author = InputGitAuthor(
                     config.GITHUB_USERNAME,
@@ -350,7 +353,7 @@ def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
                     # Commit and push update to new branch
                     get_forked_repo().update_file(contents.path, title, file_content, contents.sha, branch=branch_name,
                                                   author=author)
-                    submit_upgrade_pull_request(dep['name'], git_path, new_version, branch_name, len(remove) > 0)
+                    submit_upgrade_pull_request(dep['name'], git_path, new_version, old_version, branch_name, len(remove) > 0)
                 except GithubException as e:
                     print(e)
             df.revert_copy()

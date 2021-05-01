@@ -27,7 +27,7 @@ FORKED_LINK = "https://github.com/fireant-ci/nutch"
 REPO_PATH = ".repo"
 PLUGINS_FOLDER = "/src/plugin"
 NUM_PULLS_PER_PAGE = 25
-PULL_REQUEST_FORMAT = "fireant upgrade dependency {} in {} to {}"
+PULL_REQUEST_FORMAT = "fireant upgrade dependency {} in {} from {} to {}"
 DUPLICATE_MESSAGE = " and duplicate dependency deleted"
 MAIN_BRANCH = "master"
 
