@@ -73,7 +73,7 @@ pipeline {
             slackSend baseUrl: 'https://hooks.slack.com/services/',
                 channel: '#jenkins',
                 color: 'good',
-                message: 'Jenkins Pipeline - ' + BUILD_NUMBER + ' - Success',
+                message: 'Fireant Jenkins Pipeline - ' + BUILD_NUMBER + ' - SUCCESS',
                 teamDomain: 'apachenutch401',
                 tokenCredentialId: 'SLACK_TOKEN'
         }
@@ -81,7 +81,7 @@ pipeline {
              slackSend baseUrl: 'https://hooks.slack.com/services/',
                 channel: '#jenkins',
                 color: '#FF0000',
-                message: 'Jenkins Pipeline - ' + BUILD_NUMBER + ' - Failure',
+                message: 'Fireant Jenkins Pipeline - ' + BUILD_NUMBER + ' - FAILURE',
                 teamDomain: 'apachenutch401',
                 tokenCredentialId: 'SLACK_TOKEN'
         }
