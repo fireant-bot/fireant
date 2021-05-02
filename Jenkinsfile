@@ -20,15 +20,20 @@
 pipeline {
     agent any
     environment {
+        dockerImage = ''
         registry = 'fireantbot/fireant'
         registryCredential = 'FIREANT_DOCKERHUB_ID'
-        dockerImage = ''
+        slackChannel = '#jenkins'
+        slackDomain = 'apachenutch401'
+        slackMessage = 'Fireant Jenkins Pipeline - '
+        slackToken = 'SLACK_TOKEN'
+        slackUrl = 'https://hooks.slack.com/services/'
     }
     triggers {
         cron('0 0 * * *')
-        GenericTrigger(
+        /*GenericTrigger(
             tokenCredentialId: 'FIREANT_WEBHOOK'
-        )
+        )*/
     }
     stages {
         stage('Checkout') {
@@ -61,8 +66,16 @@ pipeline {
         stage('Run') {
             steps {
                 script {
-                    withCredentials([string(credentialsId: 'GITHUB_EMAIL', variable: 'GITHUB_EMAIL'), string(credentialsId: 'GITHUB_PASSWORD', variable: 'GITHUB_PASSWORD'), string(credentialsId: 'GITHUB_USERNAME', variable: 'GITHUB_USERNAME'), string(credentialsId: 'REQUIRES_IO_TOKEN', variable: 'REQUIRES_IO_TOKEN')]) {
-                         sh 'docker run -e GITHUB_USERNAME=$GITHUB_USERNAME -e GITHUB_PASSWORD=$GITHUB_PASSWORD -e GITHUB_EMAIL=$GITHUB_EMAIL -e REQUIRES_IO_TOKEN=$REQUIRES_IO_TOKEN fireantbot/fireant'
+                    withCredentials(
+                        [string(credentialsId: 'GITHUB_EMAIL', variable: 'EMAIL'),
+                        string(credentialsId: 'GITHUB_PASSWORD', variable: 'PASS'),
+                        string(credentialsId: 'GITHUB_USERNAME', variable: 'USER'),
+                        string(credentialsId: 'REQUIRES_IO_TOKEN', variable: 'TOKEN')]
+                        ) {
+                        sh 'docker run -e GITHUB_USERNAME=$USER\
+                            -e GITHUB_PASSWORD=$PASS\
+                            -e GITHUB_EMAIL=$EMAIL\
+                            -e REQUIRES_IO_TOKEN=$TOKEN fireantbot/fireant'
                     }
                 }
             }
@@ -70,20 +83,20 @@ pipeline {
     }
     post {
         success {
-            slackSend baseUrl: 'https://hooks.slack.com/services/',
-                channel: '#jenkins',
+            slackSend baseUrl: slackUrl,
+                channel: slackChannel,
                 color: 'good',
-                message: 'Fireant Jenkins Pipeline - ' + BUILD_NUMBER + ' - SUCCESS',
-                teamDomain: 'apachenutch401',
-                tokenCredentialId: 'SLACK_TOKEN'
+                message: slackMessage + BUILD_NUMBER + ' - SUCCESS',
+                teamDomain: slackDomain,
+                tokenCredentialId: slackToken
         }
         failure {
-             slackSend baseUrl: 'https://hooks.slack.com/services/',
-                channel: '#jenkins',
+            slackSend baseUrl: slackUrl,
+                channel: slackChannel,
                 color: '#FF0000',
-                message: 'Fireant Jenkins Pipeline - ' + BUILD_NUMBER + ' - FAILURE',
-                teamDomain: 'apachenutch401',
-                tokenCredentialId: 'SLACK_TOKEN'
+                message: slackMessage + BUILD_NUMBER + ' - FAILURE',
+                teamDomain: slackDomain,
+                tokenCredentialId: slackToken
         }
     }
 }
