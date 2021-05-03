@@ -31,9 +31,6 @@ pipeline {
     }
     triggers {
         cron('0 0 * * *')
-        /*GenericTrigger(
-            tokenCredentialId: 'FIREANT_WEBHOOK'
-        )*/
     }
     stages {
         stage('Checkout') {
