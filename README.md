@@ -25,13 +25,15 @@ First, take a look at the general overview of the [fireant codebase](https://git
 
 If you have issue using fireant, please log a ticket in the [Github issue tracker](https://github.com/fireant-bot/fireant/issues).
 
-Contributions are always welcome! Feel free to contact our team below. 
-	
-- Matthew Treadwell - treadwem@usc.edu
-- Randall Williams - rw15006@usc.edu	
-- Jamie Mayer - jamesmey@usc.edu
-- Mayram Nawaz - maryamna@usc.edu
-- Teddy Lee - leetheod@usc.edu
+Contributions are always welcome! 
+
+Original authors
+- [lewismc](https://github.com/lewismc)
+- [MattTreadwell](https://github.com/MattTreadwell)
+- [rgw17](https://github.com/rgw17)
+- [jamie-meyer](https://github.com/jamie-meyer)
+- [mjemnawaz](https://github.com/mjemnawaz)
+- [leetheod](https://github.com/leetheod)
 
 ## License
 Fireant is licensed permissively under the [Apache License v2.0](http://www.apache.org/licenses/LICENSE-2.0) a copy of which ships with this project.

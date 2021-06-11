@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import xml.etree.ElementTree as ET  # Not using this module in an unsafe way -- skipcq: BAN-B405
+import xml.sax.saxutils as saxutils
 from os import remove
 from shutil import copyfile
-from defusedxml.ElementTree import parse, XMLParser
-import xml.etree.ElementTree as ET  # Not using this module in an unsafe way -- skipcq: BAN-B405
-import config
-import xml.sax.saxutils as saxutils
 
+from defusedxml.ElementTree import parse, XMLParser
+
+import config
 
 XML_LICENSE = """\n<!-- Licensed to the Apache Software Foundation (ASF) under one or more
    contributor license agreements.  See the NOTICE file distributed with
@@ -38,7 +39,7 @@ XML_LICENSE = """\n<!-- Licensed to the Apache Software Foundation (ASF) under o
 -->\n\n"""
 
 
-class DependencyFile:
+class IvyDependencyFile:
     def __str__(self):
         """
         Returns a string with all dependencies in the xml.
@@ -52,7 +53,7 @@ class DependencyFile:
 
     def __init__(self, path):
         """
-        Construct a new DependencyFile object for a given ivy.xml file.
+        Construct a new IvyDependencyFile object for a given ivy.xml file.
 
         :param path: filepath to ivy.xml to be modified
         """
@@ -78,7 +79,7 @@ class DependencyFile:
 
     def print_log(self):
         """
-        Prints all modifications made to the DependencyFile.
+        Prints all modifications made to the IvyDependencyFile.
         Unsaved changes have not been written back to the ivy.xml,
         while saved changes have.
 
@@ -144,7 +145,7 @@ class DependencyFile:
     def __write(self, path):
         """
         Internal function for writing the contents of
-        this DependencyFile (including modifications)
+        this IvyDependencyFile (including modifications)
         to the given filepath. Also inserts Apache
         License and escapes symbols.
 
@@ -194,7 +195,7 @@ class DependencyFile:
 
     def close(self):
         """
-        Call when finished using this DependencyFile.
+        Call when finished using this IvyDependencyFile.
         Deletes the temporary backup.
 
         :return:
@@ -203,7 +204,7 @@ class DependencyFile:
 
     def revert_copy(self):
         """
-        Reset DependencyFile to its original state
+        Reset IvyDependencyFile to its original state
         from the backup (before modifications).
 
         :return:
