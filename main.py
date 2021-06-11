@@ -307,15 +307,15 @@ def process_plugin_xml(ivy_file_path):
     https://github.com/apache/nutch/blob/master/src/plugin/parse-tika/howto_upgrade_tika.txt
     :param ivy_file_path: the path on disk to the plugin.xml for the plugin being updated
     """
-    if ivy_file_path is not '.repo/ivy/ivy.xml':
+    if ivy_file_path != '.repo/ivy/ivy.xml':
         plugin_file = ivy_file_path.replace('ivy.xml', 'plugin.xml')
         plugin_dir = ivy_file_path.replace('ivy.xml', '')
-        subprocess.run(["ant", "-f", "./build-ivy.xml"], cwd=plugin_dir, check=True, capture_output=True)
+        subprocess.run(['{}'.format(which('ant')), "-f", "./build-ivy.xml"],
+                       cwd=plugin_dir, check=True, capture_output=True)
         deps = subprocess.run(
-            ["ls", "./lib", "|", "sed", "'s/^/      <library name=\"/g'", "|", "sed", "'s/$/\"\\/>/g'"],
+            ['{}'.format(which('ls')), "./lib", "|", '{}'.format(which('sed')),
+             "'s/^/      <library name=\"/g'", "|", '{}'.format(which('sed')), "'s/$/\"\\/>/g'"],
             cwd=plugin_dir, check=True, capture_output=True)
-
-
 
 
 def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
