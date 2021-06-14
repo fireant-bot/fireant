@@ -112,13 +112,14 @@ def update_forked_repo() -> bool:
         return False
 
 
-def newest_dependency_version(org: str, name: str) -> str:
+def newest_dependency_version(org: str, name: str, rev: str) -> str:
     """
     Pulls and returns the latest stable version of the dependency specified by the parameters
 
     :param org: the name of the organization that created the dependency (i.e., "org.apache.commons")
     :param name: the name of the dependency itself, used in Maven (i.e., "commons-lang3")
-    :return: string representing the latest stable version of the dependency inputted (i.e., "3.11")
+    :param rev: the dependency version, this is used to determine if a newer dependency is available
+    :return: string representing the latest stable version of the dependency (i.e., "3.11")
     """
     http = urllib3.PoolManager()
     resp = http.request('GET', config.MAVEN_SEARCH_URL.format(org, name))
@@ -130,7 +131,11 @@ def newest_dependency_version(org: str, name: str) -> str:
     while any(char.isalpha() for char in resp['response']['docs'][i]['v']):
         i += 1
     version = resp['response']['docs'][i]['v']
-    return version
+    # Ensure the fetched dependency is greater than the one we had
+    if version < rev:
+        return rev
+    else:
+        return version
 
 
 def tag_new_dep_version(dependencies: []) -> Queue:
@@ -160,8 +165,8 @@ def tag_new_dep_version(dependencies: []) -> Queue:
 
 def tag_run(dep_queue: Queue, new_dep_queue: Queue):
     """
-    Loops through all dependencies in the inputted queue, tags them with their latest stable version, and puts them
-    in the other inputted queue.
+    Loops through all dependencies in the dependency queue, tags them with their latest stable version, and inserts
+     them in a new input queue.
 
     :param dep_queue: a queue with a number of dependencies in it
     :param new_dep_queue: an empty queue that will be filled with the original dependencies and an additional tag
@@ -172,7 +177,7 @@ def tag_run(dep_queue: Queue, new_dep_queue: Queue):
         attempts = config.HTTP_RETRY_ATTEMPTS
         while dep and 'org' in dep and 'name' in dep and not new_version and attempts > 0:
             try:
-                new_version = newest_dependency_version(dep['org'], dep['name'])
+                new_version = newest_dependency_version(dep['org'], dep['name'], dep['rev'])
             except IndexError:
                 attempts -= 1
         if not new_version:
@@ -310,12 +315,12 @@ def process_plugin_xml(ivy_file_path):
     if ivy_file_path != '.repo/ivy/ivy.xml':
         plugin_file = ivy_file_path.replace('ivy.xml', 'plugin.xml')
         plugin_dir = ivy_file_path.replace('ivy.xml', '')
-        subprocess.run(['{}'.format(which('ant')), "-f", "./build-ivy.xml"],
+        build = subprocess.run(['{}'.format(which('ant')), "-f", "./build-ivy.xml"],
                        cwd=plugin_dir, check=True, capture_output=True)
-        deps = subprocess.run(
-            ['{}'.format(which('ls')), "./lib", "|", '{}'.format(which('sed')),
-             "'s/^/      <library name=\"/g'", "|", '{}'.format(which('sed')), "'s/$/\"\\/>/g'"],
-            cwd=plugin_dir, check=True, capture_output=True)
+        cmd = "{} {} | {} 's/^/      <library name=\"/g' | {} 's/$/\"\/>/g'"\
+            .format(which('ls'), './lib', which('sed'), which('sed'))
+        deps = subprocess.run([cmd], capture_output=True, check=True, cwd=plugin_dir, shell=True)
+        i = 0
 
 
 def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
