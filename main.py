@@ -29,7 +29,7 @@ import urllib3
 from github import Github, InputGitAuthor, GithubException, Repository
 
 import config
-from dependencyfile import IvyDependencyFile
+from dependencyfile import IvyDependencyFile, write_plugin_library_updates
 
 
 def debug() -> bool:
@@ -305,7 +305,7 @@ def update_dependencies(dep_dict: dict, open_pull_requests: dict):
         t.join()
 
 
-def process_plugin_xml(ivy_file_path):
+def process_plugin_xml(ivy_file_path: str):
     """
     Executes the necessary steps to complete a dependency update by updating the plugin.xml
     file (assuming it is a plugin being updated). This is documented in steps 3 and 5 from
@@ -313,14 +313,18 @@ def process_plugin_xml(ivy_file_path):
     :param ivy_file_path: the path on disk to the plugin.xml for the plugin being updated
     """
     if ivy_file_path != '.repo/ivy/ivy.xml':
-        plugin_file = ivy_file_path.replace('ivy.xml', 'plugin.xml')
         plugin_dir = ivy_file_path.replace('ivy.xml', '')
-        build = subprocess.run(['{}'.format(which('ant')), "-f", "./build-ivy.xml"],
-                       cwd=plugin_dir, check=True, capture_output=True)
-        cmd = "{} {} | {} 's/^/      <library name=\"/g' | {} 's/$/\"\/>/g'"\
-            .format(which('ls'), './lib', which('sed'), which('sed'))
-        deps = subprocess.run([cmd], capture_output=True, check=True, cwd=plugin_dir, shell=True)
-        i = 0
+        # Ignore certain plugins which do not have build-ivy.xml files
+        if 'build-ivy.xml' in os.listdir(plugin_dir):
+            plugin_file = ivy_file_path.replace('ivy.xml', 'plugin.xml')
+            subprocess.run(['{}'.format(which('ant')), "-f", "./build-ivy.xml"],
+                           cwd=plugin_dir, check=True, capture_output=True)
+            cmd = "{} {} | {} 's/^/      <library name=\"/g' | {} 's/$/\"\/>/g'"\
+                .format(which('ls'), './lib', which('sed'), which('sed'))
+            plugin_libs = subprocess.run([cmd], capture_output=True, check=True, cwd=plugin_dir, shell=True)
+            write_plugin_library_updates(plugin_file, plugin_libs.stdout.decode('utf-8'))
+            i = 0
+
 
 
 def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):

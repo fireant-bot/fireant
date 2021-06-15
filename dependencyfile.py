@@ -22,7 +22,8 @@ from defusedxml.ElementTree import parse, XMLParser
 
 import config
 
-XML_LICENSE = """\n<!-- Licensed to the Apache Software Foundation (ASF) under one or more
+XML_LICENSE = """<!-- 
+   Licensed to the Apache Software Foundation (ASF) under one or more
    contributor license agreements.  See the NOTICE file distributed with
    this work for additional information regarding copyright ownership.
    The ASF licenses this file to You under the Apache License, Version 2.0
@@ -36,7 +37,7 @@ XML_LICENSE = """\n<!-- Licensed to the Apache Software Foundation (ASF) under o
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
--->\n\n"""
+-->\n"""
 
 
 class IvyDependencyFile:
@@ -73,7 +74,7 @@ class IvyDependencyFile:
             for dependency in item:
                 self.__dependency_list.append(dependency.attrib)
 
-        # Temporarily backup the original ivy.xml while this DependencyFile is being used/modified
+        # Temporarily backup the original ivy.xml while this IvyDependencyFile is being used/modified
         self.__backup = '{}/{}.bak'.format(config.TMP_DIRECTORY, hash(path))
         self.__save_backup()
 
@@ -85,7 +86,7 @@ class IvyDependencyFile:
 
         :return:
         """
-        print("Changelog for dependency file:", self.path)
+        print("Changelog for ivy dependency file:", self.path)
         if not self.saved_changelog and not self.unsaved_changelog:
             print("No logged changes")
         if self.saved_changelog:
@@ -223,3 +224,30 @@ class IvyDependencyFile:
 
             for dependency in item:
                 self.__dependency_list.append(dependency.attrib)
+
+
+def write_plugin_library_updates(plugin_file_path: str, library_updates: str):
+    # Parse xml and preserve original comments
+    xml_tree = parse(plugin_file_path, XMLParser(target=ET.TreeBuilder(insert_comments=True), encoding='utf-8'))
+
+    # Iterate through all libraries and place their information into a list
+    root = xml_tree.getroot()
+    runtime = root.find("./runtime")
+    for library in root.findall("./runtime/library")[1:]:
+        runtime.remove(library)
+    for library_element in library_updates.split('\n')[:-1]:
+        ET.SubElement(runtime, 'library', attrib={'name': library_element.split('"')[1]})
+
+    ET.indent(xml_tree, space='  ')
+    xml_tree.write(plugin_file_path, encoding="utf-8", method='xml', xml_declaration=True)
+    with open(plugin_file_path, "r") as f:
+        content = f.readlines()
+
+    # Insert license and escape symbols
+    content.insert(1, XML_LICENSE)
+    content = "".join(content)
+    content = saxutils.unescape(content)
+
+    with open(plugin_file_path, "w") as f:
+        f.write(content)
+    i = 0
