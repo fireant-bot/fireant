@@ -250,4 +250,3 @@ def write_plugin_library_updates(plugin_file_path: str, library_updates: str):
 
     with open(plugin_file_path, "w") as f:
         f.write(content)
-    i = 0

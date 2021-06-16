@@ -323,8 +323,6 @@ def process_plugin_xml(ivy_file_path: str):
                 .format(which('ls'), './lib', which('sed'), which('sed'))
             plugin_libs = subprocess.run([cmd], capture_output=True, check=True, cwd=plugin_dir, shell=True)
             write_plugin_library_updates(plugin_file, plugin_libs.stdout.decode('utf-8'))
-            i = 0
-
 
 
 def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
@@ -375,12 +373,23 @@ def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
                     print('Submitting pull request: {}'.format(title))
                     # Create branch
                     get_forked_repo().create_git_ref(ref='refs/heads/{}'.format(branch_name), sha=source.commit.sha)
-                    contents = get_forked_repo().get_contents(git_path, ref=branch_name)
-                    with open(ivy_file_path, 'r') as xml_file:
-                        file_content = ''.join(xml_file.readlines())
+
+                    # Commit updates to ivy.xml on new branch
+                    ivy_contents = get_forked_repo().get_contents(git_path, ref=branch_name)
+                    with open(ivy_file_path, 'r') as ivy_xml_file:
+                        ivy_file_content = ''.join(ivy_xml_file.readlines())
                     # Commit and push update to new branch
-                    get_forked_repo().update_file(contents.path, title, file_content, contents.sha, branch=branch_name,
-                                                  author=author)
+                    get_forked_repo().update_file(ivy_contents.path, title, ivy_file_content, ivy_contents.sha,
+                                                  branch=branch_name, author=author)
+
+                    # Commit updates to plugin.xml on new branch
+                    plugin_contents = get_forked_repo().get_contents(git_path.replace('ivy', 'plugin'), ref=branch_name)
+                    with open(ivy_file_path.replace('ivy', 'plugin'), 'r') as plugin_xml_file:
+                        plugin_file_content = ''.join(plugin_xml_file.readlines())
+                    # Commit and push update to new branch
+                    get_forked_repo().update_file(plugin_contents.path, title, plugin_file_content, plugin_contents.sha,
+                                                  branch=branch_name, author=author)
+
                     submit_upgrade_pull_request(
                         dep['name'], git_path, new_version, old_version, branch_name, len(remove) > 0)
                 except GithubException as e:
