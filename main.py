@@ -317,8 +317,8 @@ def process_plugin_xml(ivy_file_path: str):
             plugin_file = ivy_file_path.replace('ivy.xml', 'plugin.xml')
             subprocess.run(['{}'.format(which('ant')), "-f", "./build-ivy.xml"],
                            cwd=plugin_dir, check=True, capture_output=True)
-            cmd = "{} {} | {} 's/^/      <library name=\"/g' | {} 's/$/\"\/>/g'" \
-                .format(which('ls'), './lib', which('sed'), which('sed')) # skipcq: PYL-W1401
+            str_cmd = "{} {} | {} 's/^/      <library name=\"/g' | {} 's/$/\"\/>/g'" # skipcq: PYL-W1401
+            cmd = str_cmd.format(which('ls'), './lib', which('sed'), which('sed'))
             plugin_libs = subprocess.run(
                 [cmd], capture_output=True, check=True, cwd=plugin_dir, shell=True) # skipcq: BAN-B602
             write_plugin_library_updates(plugin_file, plugin_libs.stdout.decode('utf-8'))
