@@ -134,8 +134,7 @@ def newest_dependency_version(org: str, name: str, rev: str) -> str:
     # Ensure the fetched dependency is greater than the one we had
     if version < rev:
         return rev
-    else:
-        return version
+    return version
 
 
 def tag_new_dep_version(dependencies: []) -> Queue:
@@ -294,10 +293,9 @@ def update_dependencies(dep_dict: dict, open_pull_requests: dict):
         file_queue.put(dep_file)
     threads = []
     for i in range(config.NETWORKING_THREADS_GITHUB):
-        t = threading.Thread(target=update_run, name='th-{}'.format(i), kwargs={'file_queue': file_queue,
-                                                                                'dep_dict': dep_dict,
-                                                                                'open_pull_requests': open_pull_requests
-                                                                                })
+        t = threading.Thread(
+            target=update_run, name='th-{}'.format(i),
+            kwargs={'file_queue': file_queue, 'dep_dict': dep_dict, 'open_pull_requests': open_pull_requests})
         threads.append(t)
     for t in threads:
         t.start()
@@ -319,9 +317,10 @@ def process_plugin_xml(ivy_file_path: str):
             plugin_file = ivy_file_path.replace('ivy.xml', 'plugin.xml')
             subprocess.run(['{}'.format(which('ant')), "-f", "./build-ivy.xml"],
                            cwd=plugin_dir, check=True, capture_output=True)
-            cmd = "{} {} | {} 's/^/      <library name=\"/g' | {} 's/$/\"\/>/g'"\
-                .format(which('ls'), './lib', which('sed'), which('sed'))
-            plugin_libs = subprocess.run([cmd], capture_output=True, check=True, cwd=plugin_dir, shell=True)
+            cmd = "{} {} | {} 's/^/      <library name=\"/g' | {} 's/$/\"\/>/g'" \
+                .format(which('ls'), './lib', which('sed'), which('sed')) # skipcq: PYL-W1401
+            plugin_libs = subprocess.run(
+                [cmd], capture_output=True, check=True, cwd=plugin_dir, shell=True) # skipcq: BAN-B602
             write_plugin_library_updates(plugin_file, plugin_libs.stdout.decode('utf-8'))
 
 
