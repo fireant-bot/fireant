@@ -18,18 +18,18 @@
 
 import glob
 import json
-from shutil import which
-from shutil import Error as ShutilError
+import os
 import subprocess
 import threading
 from queue import Queue
-import os
+from shutil import Error as ShutilError
+from shutil import which
 
-from github import Github, InputGitAuthor, GithubException, Repository
 import urllib3
+from github import Github, InputGitAuthor, GithubException, Repository
 
 import config
-from dependencyfile import DependencyFile
+from dependencyfile import IvyDependencyFile, write_plugin_library_updates
 
 
 def debug() -> bool:
@@ -112,13 +112,14 @@ def update_forked_repo() -> bool:
         return False
 
 
-def newest_dependency_version(org: str, name: str) -> str:
+def newest_dependency_version(org: str, name: str, rev: str) -> str:
     """
     Pulls and returns the latest stable version of the dependency specified by the parameters
 
     :param org: the name of the organization that created the dependency (i.e., "org.apache.commons")
     :param name: the name of the dependency itself, used in Maven (i.e., "commons-lang3")
-    :return: string representing the latest stable version of the dependency inputted (i.e., "3.11")
+    :param rev: the dependency version, this is used to determine if a newer dependency is available
+    :return: string representing the latest stable version of the dependency (i.e., "3.11")
     """
     http = urllib3.PoolManager()
     resp = http.request('GET', config.MAVEN_SEARCH_URL.format(org, name))
@@ -130,15 +131,18 @@ def newest_dependency_version(org: str, name: str) -> str:
     while any(char.isalpha() for char in resp['response']['docs'][i]['v']):
         i += 1
     version = resp['response']['docs'][i]['v']
+    # Ensure the fetched dependency is greater than the one we had
+    if version < rev:
+        return rev
     return version
 
 
 def tag_new_dep_version(dependencies: []) -> Queue:
     """
-    Tags all inputted dependencies with an additional attribute specifying their latest stable version
+    Tags all provided dependencies with an additional attribute specifying their latest stable version
 
     :param dependencies: a list of dependencies (a dict of attributes that specify a dependency)
-    :return: queue.Queue object containing all inputted dependencies with an additional attribute tag ('new_version')
+    :return: queue.Queue object containing all provided dependencies with an additional attribute tag ('new_version')
             that specifies the latest version of the dependency
     """
     dep_queue = Queue(config.MAXIMUM_DEPENDENCIES)
@@ -160,8 +164,8 @@ def tag_new_dep_version(dependencies: []) -> Queue:
 
 def tag_run(dep_queue: Queue, new_dep_queue: Queue):
     """
-    Loops through all dependencies in the inputted queue, tags them with their latest stable version, and puts them
-    in the other inputted queue.
+    Loops through all dependencies in the dependency queue, tags them with their latest stable version, and inserts
+     them in a new input queue.
 
     :param dep_queue: a queue with a number of dependencies in it
     :param new_dep_queue: an empty queue that will be filled with the original dependencies and an additional tag
@@ -172,7 +176,7 @@ def tag_run(dep_queue: Queue, new_dep_queue: Queue):
         attempts = config.HTTP_RETRY_ATTEMPTS
         while dep and 'org' in dep and 'name' in dep and not new_version and attempts > 0:
             try:
-                new_version = newest_dependency_version(dep['org'], dep['name'])
+                new_version = newest_dependency_version(dep['org'], dep['name'], dep['rev'])
             except IndexError:
                 attempts -= 1
         if not new_version:
@@ -241,10 +245,10 @@ def get_dependencies() -> []:
     :return: returns a list of all dependencies used in the repository via all files called ivy.xml
     """
     dependencies = []
-    for dep_file in glob.glob('{}/**/ivy.xml'.format(config.REPO_PATH.replace('/', '')), recursive=True):
-        df = DependencyFile(dep_file)
-        for dep in df.dependency_list():
-            dependencies.append(dep)
+    for ivy_file in glob.glob('{}/**/ivy.xml'.format(config.REPO_PATH.replace('/', '')), recursive=True):
+        idf = IvyDependencyFile(ivy_file)
+        for ivy_dep in idf.dependency_list():
+            dependencies.append(ivy_dep)
     return dependencies
 
 
@@ -278,7 +282,7 @@ def is_dependency_valid(dep: dict, dep_dict: dict) -> bool:
 
 def update_dependencies(dep_dict: dict, open_pull_requests: dict):
     """
-     Attempts to create upgrade all outdated dependencies in the repository and submit pull requests containing updates
+     Attempts to upgrade all outdated dependencies in the repository and submit pull requests containing updates
     to the dependencies to the upstream remote repository
 
     :param dep_dict: a dictionary mapping dependency identifiers to their up-to-date dependency counterparts
@@ -289,15 +293,35 @@ def update_dependencies(dep_dict: dict, open_pull_requests: dict):
         file_queue.put(dep_file)
     threads = []
     for i in range(config.NETWORKING_THREADS_GITHUB):
-        t = threading.Thread(target=update_run, name='th-{}'.format(i), kwargs={'file_queue': file_queue,
-                                                                                'dep_dict': dep_dict,
-                                                                                'open_pull_requests': open_pull_requests
-                                                                                })
+        t = threading.Thread(
+            target=update_run, name='th-{}'.format(i),
+            kwargs={'file_queue': file_queue, 'dep_dict': dep_dict, 'open_pull_requests': open_pull_requests})
         threads.append(t)
     for t in threads:
         t.start()
     for t in threads:
         t.join()
+
+
+def process_plugin_xml(ivy_file_path: str):
+    """
+    Executes the necessary steps to complete a dependency update by updating the plugin.xml
+    file (assuming it is a plugin being updated). This is documented in steps 3 and 5 from
+    https://github.com/apache/nutch/blob/master/src/plugin/parse-tika/howto_upgrade_tika.txt
+    :param ivy_file_path: the path on disk to the plugin.xml for the plugin being updated
+    """
+    if ivy_file_path != '.repo/ivy/ivy.xml':
+        plugin_dir = ivy_file_path.replace('ivy.xml', '')
+        # Ignore certain plugins which do not have build-ivy.xml files
+        if 'build-ivy.xml' in os.listdir(plugin_dir):
+            plugin_file = ivy_file_path.replace('ivy.xml', 'plugin.xml')
+            subprocess.run(['{}'.format(which('ant')), "-f", "./build-ivy.xml"],
+                           cwd=plugin_dir, check=True, capture_output=True)
+            str_cmd = "{} {} | {} 's/^/      <library name=\"/g' | {} 's/$/\"\/>/g'" # skipcq: PYL-W1401
+            cmd = str_cmd.format(which('ls'), './lib', which('sed'), which('sed'))
+            plugin_libs = subprocess.run(
+                [cmd], capture_output=True, check=True, cwd=plugin_dir, shell=True) # skipcq: BAN-B602
+            write_plugin_library_updates(plugin_file, plugin_libs.stdout.decode('utf-8'))
 
 
 def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
@@ -310,8 +334,8 @@ def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
     :param open_pull_requests: a dictionary (set) of all open pull request titles in the forked repository
     """
     while not file_queue.empty():
-        file_path = file_queue.get()
-        df = DependencyFile(file_path)
+        ivy_file_path = file_queue.get()
+        df = IvyDependencyFile(ivy_file_path)
         deps = {}
         for i, dep in enumerate(df.dependency_list()):
             # If invalid entry; also check for duplicates earlier in file
@@ -323,7 +347,7 @@ def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
                 if not is_dependency_valid(dupe_dep, dep_dict):
                     continue
                 if dep['org'] == dupe_dep['org'] and dep['name'] == dupe_dep['name']:
-                    print('Removing duplicate: {} - {} in {}'.format(dep['org'], dep['name'], file_path))
+                    print('Removing duplicate: {} - {} in {}'.format(dep['org'], dep['name'], ivy_file_path))
                     remove.append(j)
             # Remove duplicates
             for j, dupe_dep_num in enumerate(remove):
@@ -333,8 +357,9 @@ def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
             old_version = dep['rev']
             df.modify_version(i, new_version)
             df.save()
+            process_plugin_xml(ivy_file_path)
             strip_from = len(config.REPO_PATH.replace('/', '') + '/')
-            git_path = file_path[strip_from:]
+            git_path = ivy_file_path[strip_from:]
             title = config.PULL_REQUEST_FORMAT.format(dep['name'], git_path, old_version, new_version)
             if title not in open_pull_requests:
                 author = InputGitAuthor(
@@ -347,13 +372,25 @@ def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
                     print('Submitting pull request: {}'.format(title))
                     # Create branch
                     get_forked_repo().create_git_ref(ref='refs/heads/{}'.format(branch_name), sha=source.commit.sha)
-                    contents = get_forked_repo().get_contents(git_path, ref=branch_name)
-                    with open(file_path, 'r') as xml_file:
-                        file_content = ''.join(xml_file.readlines())
+
+                    # Commit updates to ivy.xml on new branch
+                    ivy_contents = get_forked_repo().get_contents(git_path, ref=branch_name)
+                    with open(ivy_file_path, 'r') as ivy_xml_file:
+                        ivy_file_content = ''.join(ivy_xml_file.readlines())
                     # Commit and push update to new branch
-                    get_forked_repo().update_file(contents.path, title, file_content, contents.sha, branch=branch_name,
-                                                  author=author)
-                    submit_upgrade_pull_request(dep['name'], git_path, new_version, old_version, branch_name, len(remove) > 0)
+                    get_forked_repo().update_file(ivy_contents.path, title, ivy_file_content, ivy_contents.sha,
+                                                  branch=branch_name, author=author)
+
+                    # Commit updates to plugin.xml on new branch
+                    plugin_contents = get_forked_repo().get_contents(git_path.replace('ivy', 'plugin'), ref=branch_name)
+                    with open(ivy_file_path.replace('ivy', 'plugin'), 'r') as plugin_xml_file:
+                        plugin_file_content = ''.join(plugin_xml_file.readlines())
+                    # Commit and push update to new branch
+                    get_forked_repo().update_file(plugin_contents.path, title, plugin_file_content, plugin_contents.sha,
+                                                  branch=branch_name, author=author)
+
+                    submit_upgrade_pull_request(
+                        dep['name'], git_path, new_version, old_version, branch_name, len(remove) > 0)
                 except GithubException as e:
                     print(e)
             df.revert_copy()
@@ -366,7 +403,7 @@ def main():
     print('*********************************************************************************************')
     dependencies = get_dependencies()
     # Tag the dependencies with new versions pulled from Maven
-    print("\n\nPulling new dependency versions from maven")
+    print("\n\nPulling new dependency versions from Maven Central")
     print('*********************************************************************************************')
     dependency_dict = find_updated_dependency_versions(dependencies)
     # Get current open pull requests

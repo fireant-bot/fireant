@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-defusedxml
-PyGithub
-pytest
-requires.io
-urllib3
+defusedxml>=0.7.1
+PyGithub>=1.55
+pytest>=6.2.4
+requires.io>=0.2.6
+urllib3>=1.26.5
