@@ -13,9 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-defusedxml>=0.7.1
-jira>=3.0.1
-PyGithub>=1.55
-pytest>=6.2.4
-requires.io>=0.2.6
-urllib3>=1.26.5
+import config
+from jira import JIRA
+
+
+def create_nutch_jira_issue(title: str):
+    jira = JIRA(server="https://issues.apache.org/jira", basic_auth=(config.JIRA_USERNAME, config.JIRA_PASSWORD))
+    return jira.create_issue(fields={'components': [{'name': 'build'}, {'name': 'fireant'}], 'description': title,
+                              'fixVersions': [{'name': config.NEXT_NUTCH_RELEASE}], 'issuetype': 'Improvement',
+                              'project': 'NUTCH', 'summary': title
+                              }
+                      )

@@ -361,6 +361,9 @@ def update_run(file_queue: Queue, dep_dict: dict, open_pull_requests: dict):
             strip_from = len(config.REPO_PATH.replace('/', '') + '/')
             git_path = ivy_file_path[strip_from:]
             title = config.PULL_REQUEST_FORMAT.format(dep['name'], git_path, old_version, new_version)
+            from jira_utils import create_nutch_jira_issue
+            nutch_jira_title = create_nutch_jira_issue(title=title)
+            title = '[{}] {}'.format(nutch_jira_title, title)
             if title not in open_pull_requests:
                 author = InputGitAuthor(
                     config.GITHUB_USERNAME,
