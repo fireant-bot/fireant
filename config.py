@@ -19,7 +19,7 @@ import os
 NETWORKING_THREADS_MAVEN = 8
 NETWORKING_THREADS_GITHUB = 1
 MAXIMUM_DEPENDENCIES = 1000
-TMP_DIRECTORY = "/tmp"
+TMP_DIRECTORY = "/tmp" # skipcq: BAN-B108
 
 # GitHub settings
 REMOTE_REPO_LINK = "https://github.com/apache/nutch"
