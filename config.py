@@ -19,7 +19,7 @@ import os
 NETWORKING_THREADS_MAVEN = 8
 NETWORKING_THREADS_GITHUB = 1
 MAXIMUM_DEPENDENCIES = 1000
-TMP_DIRECTORY = "/tmp"
+TMP_DIRECTORY = "/tmp" # skipcq: BAN-B108
 
 # GitHub settings
 REMOTE_REPO_LINK = "https://github.com/apache/nutch"
@@ -35,12 +35,17 @@ MAIN_BRANCH = "master"
 MAVEN_SEARCH_URL = "https://search.maven.org/solrsearch/select?q=g:{}%20AND%20a:{}&core=gav&start=0&rows=20"
 HTTP_RETRY_ATTEMPTS = 3
 
-# Sensitive settings for GitHub
+# NUTCH settings
+NEXT_NUTCH_RELEASE = '1.19'
+
+# Sensitive settings
 try:
     GITHUB_USERNAME = os.environ['GITHUB_USERNAME']
     GITHUB_PASSWORD = os.environ['GITHUB_PASSWORD']
     GITHUB_EMAIL = os.environ['GITHUB_EMAIL']
     REQUIRES_IO_TOKEN = os.environ['REQUIRES_IO_TOKEN']
+    JIRA_USERNAME = os.environ['JIRA_USERNAME']
+    JIRA_PASSWORD = os.environ['JIRA_PASSWORD']
 except KeyError as e:
     print(e)
     print("Could not get environment variables for GitHub settings or Requires.io")
